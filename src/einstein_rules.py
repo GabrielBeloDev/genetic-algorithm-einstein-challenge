@@ -92,8 +92,86 @@ def r15(h):  # O homem que fuma Blends é vizinho do que bebe Água
 # Lista com todas as regras para fácil importação
 RULES = [r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15]
 
+# Pesos para regras críticas (regras de vizinhança são mais difíceis)
+RULE_WEIGHTS = {
+    0: 1.0,  # r1 - simples
+    1: 1.0,  # r2 - simples
+    2: 1.0,  # r3 - simples
+    3: 1.0,  # r4 - simples
+    4: 1.5,  # r5 - sequencial (crítica)
+    5: 1.0,  # r6 - simples
+    6: 1.0,  # r7 - simples
+    7: 1.0,  # r8 - simples
+    8: 1.0,  # r9 - simples (posição fixa)
+    9: 2.0,  # r10 - vizinhança (muito crítica)
+    10: 2.0,  # r11 - vizinhança (muito crítica)
+    11: 1.0,  # r12 - simples
+    12: 1.0,  # r13 - simples
+    13: 2.0,  # r14 - vizinhança (muito crítica)
+    14: 2.0,  # r15 - vizinhança (muito crítica)
+}
 
-# Função de fitness baseada nas regras
+
 def fitness(chrom):
     """Função fitness: conta quantas das 15 regras são satisfeitas"""
     return sum(r(chrom) for r in RULES)
+
+
+def weighted_fitness(chrom):
+    """Função fitness com pesos para regras críticas"""
+    total = 0.0
+    for i, rule in enumerate(RULES):
+        if rule(chrom):
+            total += RULE_WEIGHTS[i]
+    return total
+
+
+def get_missing_rules(chrom):
+    """Retorna os índices das regras que não estão sendo satisfeitas"""
+    missing = []
+    for i, rule in enumerate(RULES):
+        if not rule(chrom):
+            missing.append(i + 1)  # +1 para ficar 1-indexed
+    return missing
+
+
+def detailed_fitness_report(chrom):
+    """Retorna relatório detalhado do fitness"""
+    satisfied = []
+    missing = []
+
+    for i, rule in enumerate(RULES):
+        if rule(chrom):
+            satisfied.append(i + 1)
+        else:
+            missing.append(i + 1)
+
+    return {
+        "score": len(satisfied),
+        "satisfied": satisfied,
+        "missing": missing,
+        "weighted_score": weighted_fitness(chrom),
+    }
+
+
+def partial_fitness_scores(chrom):
+    """Retorna pontuações parciais para análise"""
+    # Agrupa regras por tipo
+    simple_rules = [0, 1, 2, 3, 5, 6, 7, 8, 11, 12]  # Regras simples
+    position_rules = [0, 8]  # Regras de posição fixa
+    sequence_rules = [4]  # Regras sequenciais
+    neighbor_rules = [9, 10, 13, 14]  # Regras de vizinhança
+
+    scores = {}
+
+    for category, rule_indices in [
+        ("simple", simple_rules),
+        ("position", position_rules),
+        ("sequence", sequence_rules),
+        ("neighbor", neighbor_rules),
+    ]:
+        satisfied = sum(1 for i in rule_indices if RULES[i](chrom))
+        total = len(rule_indices)
+        scores[category] = f"{satisfied}/{total}"
+
+    return scores
