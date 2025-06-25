@@ -60,6 +60,21 @@ def roulette_selection(population: List, fitness_values: List[int]):
     return population[-1]
 
 
+def hybrid_selection(population: List, fitness_values: List[int], use_tournament=True):
+    """Seleção híbrida: usa torneio para altos fitness, roleta para baixos"""
+    if use_tournament and max(fitness_values) >= 12:
+        # Torneio para cromossomos com alta fitness
+        tournament_size = 5
+        tournament_indices = random.sample(
+            range(len(population)), min(tournament_size, len(population))
+        )
+        best_idx = max(tournament_indices, key=lambda i: fitness_values[i])
+        return population[best_idx]
+    else:
+        # Roleta para diversidade
+        return roulette_selection(population, fitness_values)
+
+
 def show_solution(chrom):
     """Mostra a solução de forma clara para apresentação"""
     print("\n" + "=" * 70)
