@@ -175,7 +175,9 @@ Este projeto está licenciado sob a licença MIT - veja o arquivo [LICENSE](LICE
 
 **Gabriel Belo**
 - GitHub: [@GabrielBeloDev](https://github.com/GabrielBeloDev)
-- LinkedIn: [Gabriel Belo](https://linkedin.com/in/gabrielbelo)
+- LinkedIn: [Gabriel Belo](www.linkedin.com/in/gabriel--belo
+
+)
 
 ---
 
