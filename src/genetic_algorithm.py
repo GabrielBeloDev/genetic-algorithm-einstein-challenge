@@ -65,12 +65,10 @@ def mutacao_inteligente(
     resultado = cromossomo
 
     if fitness_atual >= 13:
-        # Para alto fitness: múltiplas mutações suaves
         numero_mutacoes = random.randint(2, 4)
         for _ in range(numero_mutacoes):
             resultado = mutacao(resultado, 0.3)
     else:
-        # Para baixo fitness: mutação padrão
         resultado = mutacao(resultado, 1.0)
 
     return resultado
@@ -80,9 +78,6 @@ def mutacao_inteligente(
 def mutacao_dirigida(
     cromossomo: List[Tuple], regras_faltantes: List[int]
 ) -> List[Tuple]:
-    """
-    Mutação dirigida que foca nas regras que ainda não foram satisfeitas.
-    """
 
     if not regras_faltantes:
         return cromossomo
@@ -96,7 +91,7 @@ def mutacao_dirigida(
     if regras_prioritarias:
         # para regras de maior peso ponderado, tenta reorganizar casas vizinhas
         for _ in range(2):
-            posicao = random.randint(0, 3)  # posições 0-3 para ter vizinhos
+            posicao = random.randint(0, 3)
             if random.random() < 0.5:
                 # troca característica entre casas adjacentes para melhor tentativa de resolver
                 caracteristica = random.randint(0, 4)
@@ -123,7 +118,7 @@ def mutacao_dirigida(
     return [tuple(casa) for casa in novo_cromossomo]
 
 
-# operador de cruzamento de um ponto // args: pai1 e pai2 e probabilidade de cruzamento / return: tupla com dois filhos gerados
+# operador de cruzamento de um ponto aleatório // args: pai1 e pai2 e probabilidade de cruzamento / return: tupla com dois filhos gerados
 def cruzamento(
     pai1: List[Tuple], pai2: List[Tuple], taxa_cruzamento: float
 ) -> Tuple[List[Tuple], List[Tuple]]:
@@ -174,18 +169,15 @@ def reparar_cromossomo(cromossomo: List[Tuple]) -> List[Tuple]:
     novo_cromossomo = [list(casa) for casa in cromossomo]
 
     for caracteristica_idx in range(5):
-        # variaveis de coleta de valores atuais para esta característica
         valores_atuais = [casa[caracteristica_idx] for casa in novo_cromossomo]
         valores_unicos = list(set(valores_atuais))
 
-        # se tiver duplicatas, corrige
         if len(valores_unicos) < 5:
             todos_valores = [CORES, NACIONALIDADES, BEBIDAS, CIGARROS, ANIMAIS][
                 caracteristica_idx
             ]
             valores_faltantes = [v for v in todos_valores if v not in valores_unicos]
 
-            # identifica posições com duplicatas
             contagem = {}
             for i, valor in enumerate(valores_atuais):
                 if valor not in contagem:
@@ -196,7 +188,7 @@ def reparar_cromossomo(cromossomo: List[Tuple]) -> List[Tuple]:
             idx_faltante = 0
             for valor, posicoes in contagem.items():
                 if len(posicoes) > 1:
-                    # mantém primeira ocorrência (normalmente a correta) e substitui as outras
+                    # mantém a ocorrencia certa e substitui as outras
                     for pos in posicoes[1:]:
                         if idx_faltante < len(valores_faltantes):
                             novo_cromossomo[pos][caracteristica_idx] = (
@@ -207,7 +199,7 @@ def reparar_cromossomo(cromossomo: List[Tuple]) -> List[Tuple]:
     return [tuple(casa) for casa in novo_cromossomo]
 
 
-# seleção por roleta baseada no fitness // individuo com maior fitness tem maior probabilidade de seleção
+# seleção por roleta baseada no fitness (proporcional a ele) // diversificação - exploração ampla
 def selecao_roleta(
     populacao: List[List[Tuple]], valores_fitness: List[int]
 ) -> List[Tuple]:
@@ -231,7 +223,7 @@ def selecao_roleta(
 
 
 # seleção por torneio com tamanho configurável // args: populacao e valores de fitness e tamanho do torneio - numero de individuos competindo ( maior = mais seletivo)
-# return com o maior fitness --  melhor_indice
+# return com o maior fitness --  melhor_indice // conceito de intensificação: busca local -  mais elitista, pode convergir mais rapido
 def selecao_torneio(
     populacao: List[List[Tuple]], valores_fitness: List[int], tamanho_torneio: int = 5
 ) -> List[Tuple]:
@@ -262,7 +254,8 @@ def selecao_hibrida(
         return selecao_roleta(populacao, valores_fitness)
 
 
-# busca local tipo hill-climbing para refinamento de soluções, especialmente eficaz para cromossomos com fitness ≥ 13, ele explora sistematicamente vizinhanças através de trocas pequenas.
+# busca local tipo hill-climbing (um algoritmo de busca local que se inspira na escalada ao pico de uma montanha,encontrar a melhor solução a partir de um conjunto de soluções possíveis.
+# Para esse caso do refinamento de soluções,eficaz para cromossomos com fitness ≥ 13, ele explora sistematicamente vizinhanças através de trocas pequenas.
 def busca_local(
     cromossomo: List[Tuple], funcao_fitness: Callable, max_iteracoes: int = 50
 ) -> List[Tuple]:
@@ -356,7 +349,7 @@ def criar_descendentes_elite(
             pai1, pai2, 0.95
         )  # cruzamento avançado com alta probabilidade
 
-        filho1 = busca_local(filho1, funcao_fitness, 10)  # busca local para refinamento
+        filho1 = busca_local(filho1, funcao_fitness, 10)  # busca hill-climbing
         filho2 = busca_local(filho2, funcao_fitness, 10)
 
         descendentes.extend([filho1, filho2])
@@ -393,7 +386,7 @@ def mutacao_especializada_regra5(cromossomo: List[Tuple]) -> List[Tuple]:
     return [tuple(casa) for casa in novo_cromossomo]
 
 
-# debug para análise científica
+# debug
 def debug_status_regra5(cromossomo: List[Tuple]) -> dict:
 
     cores_casas = [casa[0] for casa in cromossomo]
@@ -447,12 +440,9 @@ def forca_bruta_regra5(
     for pos_verde, pos_branca in posicoes_verde_branca:
         candidato = [list(casa) for casa in cromossomo]
 
-        cor_original_verde = candidato[pos_verde][
-            0
-        ]  # salva cores atuais das posições que serão modificadas
+        cor_original_verde = candidato[pos_verde][0]
         cor_original_branca = candidato[pos_branca][0]
 
-        # encontra posições atuais de Verde e Branca
         pos_atual_verde = next(
             (i for i, casa in enumerate(candidato) if casa[0] == "Verde"), -1
         )
@@ -460,13 +450,11 @@ def forca_bruta_regra5(
             (i for i, casa in enumerate(candidato) if casa[0] == "Branca"), -1
         )
 
-        # realiza troca de cores para testar a validade
         if pos_atual_verde != -1 and pos_atual_verde != pos_verde:
             candidato[pos_atual_verde][0] = cor_original_verde
         if pos_atual_branca != -1 and pos_atual_branca != pos_branca:
             candidato[pos_atual_branca][0] = cor_original_branca
 
-        # força configuração Verde-Branca em forca bruta para finalizar o teste
         candidato[pos_verde][0] = "Verde"
         candidato[pos_branca][0] = "Branca"
 
@@ -579,9 +567,7 @@ def analise_profunda_populacao(
     print(f"\nANÁLISE APROFUNDADA DOS TOP {top_n} INDIVÍDUOS:")
     print("=" * 60)
 
-    populacao_ordenada = sorted(
-        populacao, key=funcao_fitness, reverse=True
-    )  # Ordena população por fitness
+    populacao_ordenada = sorted(populacao, key=funcao_fitness, reverse=True)
 
     for i, cromossomo in enumerate(populacao_ordenada[:top_n], 1):
         fitness_atual = funcao_fitness(cromossomo)
@@ -596,7 +582,6 @@ def analise_profunda_populacao(
                 f"Casa {j}: {casa[0]:<8} {casa[1]:<10} {casa[2]:<6} {casa[3]:<10} {casa[4]}"
             )
 
-        # validação estrutural e de restrições
         if not all(analise["validacao_estrutural"].values()):
             print("AVISO: Cromossomo com estrutura inválida detectado!")
 

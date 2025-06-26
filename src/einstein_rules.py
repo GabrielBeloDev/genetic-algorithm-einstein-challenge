@@ -9,7 +9,6 @@ def vizinhos(i: int) -> list[int]:
     return [j for j in (i - 1, i + 1) if 0 <= j < 5]
 
 
-# ---- AS 15 REGRAS DO DESAFIO DE EINSTEIN --------------------------------
 def r1(h):  # O Norueguês vive na primeira casa
     return h[0][1] == "Norueguês"
 
