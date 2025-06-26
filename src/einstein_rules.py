@@ -4,13 +4,11 @@ Este módulo contém as 15 regras do desafio e funções auxiliares.
 """
 
 
-# Função auxiliar para encontrar vizinhos
+# encontra os vizinhos de uma casa
 def vizinhos(i: int) -> list[int]:
-    """Retorna índices das casas vizinhas (esquerda e direita)"""
     return [j for j in (i - 1, i + 1) if 0 <= j < 5]
 
 
-# ---- AS 15 REGRAS DO DESAFIO DE EINSTEIN --------------------------------
 def r1(h):  # O Norueguês vive na primeira casa
     return h[0][1] == "Norueguês"
 
@@ -89,11 +87,89 @@ def r15(h):  # O homem que fuma Blends é vizinho do que bebe Água
     return False
 
 
-# Lista com todas as regras para fácil importação
-RULES = [r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15]
+REGRAS = [r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15]
+
+# Pesos para regras críticas
+PESOS_REGRAS = {
+    0: 1.0,  # r1 - simples
+    1: 1.0,  # r2 - simples
+    2: 1.0,  # r3 - simples
+    3: 1.0,  # r4 - simples
+    4: 1.5,  # r5 - intermediária
+    5: 1.0,  # r6 - simples
+    6: 1.0,  # r7 - simples
+    7: 1.0,  # r8 - simples
+    8: 1.0,  # r9 - simples (posição fixa)
+    9: 2.0,  # r10 - vizinhança (crítica)
+    10: 2.0,  # r11 - vizinhança (crítica)
+    11: 1.0,  # r12 - simples
+    12: 1.0,  # r13 - simples
+    13: 2.0,  # r14 - vizinhança (crítica)
+    14: 2.0,  # r15 - vizinhança (crítica)
+}
 
 
-# Função de fitness baseada nas regras
-def fitness(chrom):
-    """Função fitness: conta quantas das 15 regras são satisfeitas"""
-    return sum(r(chrom) for r in RULES)
+# fitness simples para contagem de regras satisfeitas
+def fitness(cromossomo):
+    return sum(regra(cromossomo) for regra in REGRAS)
+
+
+# fitness ponderado para regras críticas
+def fitness_ponderado(cromossomo):
+
+    total = 0.0
+    for i, regra in enumerate(REGRAS):
+        if regra(cromossomo):
+            total += PESOS_REGRAS[i]
+    return total
+
+
+# retorna os índices das regras que não estão sendo satisfeitas
+def obter_regras_faltantes(cromossomo):
+    faltantes = []
+    for i, regra in enumerate(REGRAS):
+        if not regra(cromossomo):
+            faltantes.append(i + 1)
+    return faltantes
+
+
+# relatório do fitness
+def relatorio_detalhado_fitness(cromossomo):
+    satisfeitas = []
+    faltantes = []
+
+    for i, regra in enumerate(REGRAS):
+        if regra(cromossomo):
+            satisfeitas.append(i + 1)
+        else:
+            faltantes.append(i + 1)
+
+    return {
+        "score": len(satisfeitas),
+        "satisfied": satisfeitas,
+        "missing": faltantes,
+        "weighted_score": fitness_ponderado(cromossomo),
+    }
+
+
+# pontuação parcial para análise
+def pontuacoes_parciais_fitness(cromossomo):
+    # agrupa regras por tipo
+    regras_simples = [0, 1, 2, 3, 5, 6, 7, 8, 11, 12]  # Regras simples
+    regras_posicao = [0, 8]  # Regras de posição fixa
+    regras_sequencia = [4]  # Regras sequenciais
+    regras_vizinhanca = [9, 10, 13, 14]  # Regras de vizinhança
+
+    pontuacoes = {}
+
+    for categoria, indices_regras in [
+        ("simples", regras_simples),
+        ("posicao", regras_posicao),
+        ("sequencia", regras_sequencia),
+        ("vizinhanca", regras_vizinhanca),
+    ]:
+        satisfeitas = sum(1 for i in indices_regras if REGRAS[i](cromossomo))
+        total = len(indices_regras)
+        pontuacoes[categoria] = f"{satisfeitas}/{total}"
+
+    return pontuacoes
