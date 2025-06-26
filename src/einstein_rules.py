@@ -4,9 +4,8 @@ Este módulo contém as 15 regras do desafio e funções auxiliares.
 """
 
 
-# Função auxiliar para encontrar vizinhos
+# encontra os vizinhos de uma casa
 def vizinhos(i: int) -> list[int]:
-    """Retorna índices das casas vizinhas (esquerda e direita)"""
     return [j for j in (i - 1, i + 1) if 0 <= j < 5]
 
 
@@ -102,22 +101,23 @@ PESOS_REGRAS = {
     6: 1.0,  # r7 - simples
     7: 1.0,  # r8 - simples
     8: 1.0,  # r9 - simples (posição fixa)
-    9: 2.0,  # r10 - vizinhança (muito crítica)
-    10: 2.0,  # r11 - vizinhança (muito crítica)
+    9: 2.0,  # r10 - vizinhança (crítica)
+    10: 2.0,  # r11 - vizinhança (crítica)
     11: 1.0,  # r12 - simples
     12: 1.0,  # r13 - simples
-    13: 2.0,  # r14 - vizinhança (muito crítica)
-    14: 2.0,  # r15 - vizinhança (muito crítica)
+    13: 2.0,  # r14 - vizinhança (crítica)
+    14: 2.0,  # r15 - vizinhança (crítica)
 }
 
 
+# fitness simples para contagem de regras satisfeitas
 def fitness(cromossomo):
-    """Função fitness: conta quantas das 15 regras são satisfeitas"""
     return sum(regra(cromossomo) for regra in REGRAS)
 
 
+# fitness ponderado para regras críticas
 def fitness_ponderado(cromossomo):
-    """Função fitness com pesos para regras críticas"""
+
     total = 0.0
     for i, regra in enumerate(REGRAS):
         if regra(cromossomo):
@@ -125,17 +125,17 @@ def fitness_ponderado(cromossomo):
     return total
 
 
+# retorna os índices das regras que não estão sendo satisfeitas
 def obter_regras_faltantes(cromossomo):
-    """Retorna os índices das regras que não estão sendo satisfeitas"""
     faltantes = []
     for i, regra in enumerate(REGRAS):
         if not regra(cromossomo):
-            faltantes.append(i + 1)  # +1 para ficar 1-indexed
+            faltantes.append(i + 1)
     return faltantes
 
 
+# relatório do fitness
 def relatorio_detalhado_fitness(cromossomo):
-    """Retorna relatório detalhado do fitness"""
     satisfeitas = []
     faltantes = []
 
@@ -153,9 +153,9 @@ def relatorio_detalhado_fitness(cromossomo):
     }
 
 
+# pontuação parcial para análise
 def pontuacoes_parciais_fitness(cromossomo):
-    """Retorna pontuações parciais para análise"""
-    # Agrupa regras por tipo
+    # agrupa regras por tipo
     regras_simples = [0, 1, 2, 3, 5, 6, 7, 8, 11, 12]  # Regras simples
     regras_posicao = [0, 8]  # Regras de posição fixa
     regras_sequencia = [4]  # Regras sequenciais

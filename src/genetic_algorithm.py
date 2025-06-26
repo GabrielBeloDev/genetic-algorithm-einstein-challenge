@@ -1,15 +1,13 @@
 """
-Módulo do Algoritmo Genético OTIMIZADO para resolver o Desafio de Einstein
-Implementa operadores genéticos avançados e estratégias de busca local
+Módulo do Algoritmo Genético para resolver o Desafio de Einstein
+Implementamos operadores genéticos e estratégias de busca local
 """
 
 import random
 import copy
 from typing import List, Tuple, Callable
 
-# ================== CROMOSSOMO E CODIFICAÇÃO ===================
 
-# Definição das características de cada casa
 CORES = ["Vermelha", "Verde", "Branca", "Amarela", "Azul"]
 NACIONALIDADES = ["Inglês", "Sueco", "Dinamarquês", "Norueguês", "Alemão"]
 BEBIDAS = ["Chá", "Café", "Leite", "Cerveja", "Água"]
@@ -17,11 +15,8 @@ CIGARROS = ["Pall Mall", "Dunhill", "Blends", "BlueMaster", "Prince"]
 ANIMAIS = ["Cachorros", "Pássaros", "Gatos", "Cavalos", "Peixes"]
 
 
+# método para gerar um cromossomo aleatório para uma config válida
 def cromossomo_aleatorio() -> List[Tuple[str, str, str, str, str]]:
-    """
-    Gera um cromossomo aleatório representando uma configuração válida.
-    Cada casa é uma tupla: (cor, nacionalidade, bebida, cigarro, animal)
-    """
     cores = CORES.copy()
     nacionalidades = NACIONALIDADES.copy()
     bebidas = BEBIDAS.copy()
@@ -40,32 +35,18 @@ def cromossomo_aleatorio() -> List[Tuple[str, str, str, str, str]]:
     ]
 
 
-# ==================== OPERADORES GENÉTICOS ====================
-
-
+# método para mutar um cromossomo com uma taxa de aleatória // args: cromossomo(config atual das casas) e taxa de mutação / return dess metodo é o cromossomo mutado
 def mutacao(cromossomo: List[Tuple], taxa_mutacao: float) -> List[Tuple]:
-    """
-    Operador de mutação básico: troca aleatória de elementos entre casas.
-
-    Args:
-        cromossomo: Configuração atual das casas
-        taxa_mutacao: Probabilidade de mutação
-
-    Returns:
-        Cromossomo após aplicação da mutação
-    """
     if random.random() > taxa_mutacao:
         return cromossomo
 
     novo_cromossomo = [list(casa) for casa in cromossomo]
 
-    # Escolhe duas casas aleatórias
-    casa1, casa2 = random.sample(range(5), 2)
+    casa1, casa2 = random.sample(range(5), 2)  # escolhe duas casas aleatórias
 
-    # Escolhe uma característica aleatória (0=cor, 1=nacionalidade, etc.)
-    caracteristica = random.randint(0, 4)
+    caracteristica = random.randint(0, 4)  # '' config aleatória
 
-    # Troca a característica entre as duas casas
+    # trocou a característica entre as duas casas
     novo_cromossomo[casa1][caracteristica], novo_cromossomo[casa2][caracteristica] = (
         novo_cromossomo[casa2][caracteristica],
         novo_cromossomo[casa1][caracteristica],
@@ -74,15 +55,10 @@ def mutacao(cromossomo: List[Tuple], taxa_mutacao: float) -> List[Tuple]:
     return [tuple(casa) for casa in novo_cromossomo]
 
 
+# metodo adaptativo para mutação no current fitness, baseado em tecnicas de comp paralela com mpi e openmp / para cromossomo de alto fitness aplica mutações suaves e para cromossomo de baixo fitness aplica mutação padrão
 def mutacao_inteligente(
     cromossomo: List[Tuple], taxa_mutacao: float, fitness_atual: int
 ) -> List[Tuple]:
-    """
-    Mutação adaptativa baseada no fitness atual.
-
-    Para cromossomos de alto fitness (≥13), aplica múltiplas mutações pequenas
-    para explorar finamente o espaço de soluções próximas.
-    """
     if random.random() > taxa_mutacao:
         return cromossomo
 
@@ -100,29 +76,29 @@ def mutacao_inteligente(
     return resultado
 
 
+# metodo para mutação dirigida que foca nas regras que ainda não foram satisfeitas // tenta priorizar regras de maior peso para melhorar essa resolução.
 def mutacao_dirigida(
     cromossomo: List[Tuple], regras_faltantes: List[int]
 ) -> List[Tuple]:
     """
     Mutação dirigida que foca nas regras que ainda não foram satisfeitas.
-
-    Estratégia acadêmica: Prioriza modificações que podem resolver regras específicas
     """
+
     if not regras_faltantes:
         return cromossomo
 
     novo_cromossomo = [list(casa) for casa in cromossomo]
 
-    # Foca especialmente nas regras de vizinhança (10, 11, 14, 15)
+    # regras de vizinhança / maior peso
     regras_vizinhanca = [10, 11, 14, 15]
     regras_prioritarias = [r for r in regras_faltantes if r in regras_vizinhanca]
 
     if regras_prioritarias:
-        # Para regras de vizinhança, tenta reorganizar casas adjacentes
+        # para regras de maior peso ponderado, tenta reorganizar casas vizinhas
         for _ in range(2):
-            posicao = random.randint(0, 3)  # Posições 0-3 para ter vizinhos
+            posicao = random.randint(0, 3)  # posições 0-3 para ter vizinhos
             if random.random() < 0.5:
-                # Troca característica entre casas adjacentes
+                # troca característica entre casas adjacentes para melhor tentativa de resolver
                 caracteristica = random.randint(0, 4)
                 (
                     novo_cromossomo[posicao][caracteristica],
@@ -132,8 +108,9 @@ def mutacao_dirigida(
                     novo_cromossomo[posicao][caracteristica],
                 )
     else:
-        # Para outras regras, aplica mutação padrão
-        casa1, casa2 = random.sample(range(5), 2)
+        casa1, casa2 = random.sample(
+            range(5), 2
+        )  # para outras regras, aplica mutação padrão
         caracteristica = random.randint(0, 4)
         (
             novo_cromossomo[casa1][caracteristica],
@@ -146,19 +123,11 @@ def mutacao_dirigida(
     return [tuple(casa) for casa in novo_cromossomo]
 
 
+# operador de cruzamento de um ponto // args: pai1 e pai2 e probabilidade de cruzamento / return: tupla com dois filhos gerados
 def cruzamento(
     pai1: List[Tuple], pai2: List[Tuple], taxa_cruzamento: float
 ) -> Tuple[List[Tuple], List[Tuple]]:
-    """
-    Operador de cruzamento de um ponto.
 
-    Args:
-        pai1, pai2: Cromossomos pais
-        taxa_cruzamento: Probabilidade de cruzamento
-
-    Returns:
-        Tupla com dois filhos gerados
-    """
     if random.random() > taxa_cruzamento:
         return pai1, pai2
 
@@ -167,20 +136,17 @@ def cruzamento(
     filho1 = pai1[:ponto_corte] + pai2[ponto_corte:]
     filho2 = pai2[:ponto_corte] + pai1[ponto_corte:]
 
-    # Reparação para garantir cromossomos válidos
+    # reparacao para os cromossomos validos
     filho1 = reparar_cromossomo(filho1)
     filho2 = reparar_cromossomo(filho2)
 
     return filho1, filho2
 
 
+# cruzamento uniforme com reparação inteligente, cada gene é herdado independentemente com 50% de probabilidade de cada pai
 def cruzamento_avancado(
     pai1: List[Tuple], pai2: List[Tuple], taxa_cruzamento: float
 ) -> Tuple[List[Tuple], List[Tuple]]:
-    """
-    Cruzamento uniforme com reparação inteligente.
-    Cada gene é herdado independentemente com 50% de probabilidade de cada pai.
-    """
     if random.random() > taxa_cruzamento:
         return pai1, pai2
 
@@ -195,44 +161,42 @@ def cruzamento_avancado(
             filho1.append(pai2[i])
             filho2.append(pai1[i])
 
-    # Reparação essencial para cromossomos válidos
+    # de novo, usei a funcao reparar_cromossomo para cromossomos válidos
     filho1 = reparar_cromossomo(filho1)
     filho2 = reparar_cromossomo(filho2)
 
     return filho1, filho2
 
 
+# funcao para reparar cromossomos válidos, logo com cada característica apareça exatamente uma vez. // resolve tambem as duplicatas pela troca aleatória
 def reparar_cromossomo(cromossomo: List[Tuple]) -> List[Tuple]:
-    """
-    Repara um cromossomo garantindo que cada característica apareça exatamente uma vez.
-    Resolve duplicatas através de trocas aleatórias.
-    """
+
     novo_cromossomo = [list(casa) for casa in cromossomo]
 
     for caracteristica_idx in range(5):
-        # Coleta valores atuais para esta característica
+        # variaveis de coleta de valores atuais para esta característica
         valores_atuais = [casa[caracteristica_idx] for casa in novo_cromossomo]
         valores_unicos = list(set(valores_atuais))
 
-        # Se há duplicatas, corrige
+        # se tiver duplicatas, corrige
         if len(valores_unicos) < 5:
             todos_valores = [CORES, NACIONALIDADES, BEBIDAS, CIGARROS, ANIMAIS][
                 caracteristica_idx
             ]
             valores_faltantes = [v for v in todos_valores if v not in valores_unicos]
 
-            # Identifica posições com duplicatas
+            # identifica posições com duplicatas
             contagem = {}
             for i, valor in enumerate(valores_atuais):
                 if valor not in contagem:
                     contagem[valor] = []
                 contagem[valor].append(i)
 
-            # Substitui duplicatas por valores faltantes
+            # tenta substituir duplicatas por valores faltantes // estrategia para otimizacao 14/15
             idx_faltante = 0
             for valor, posicoes in contagem.items():
                 if len(posicoes) > 1:
-                    # Mantém primeira ocorrência, substitui as outras
+                    # mantém primeira ocorrência (normalmente a correta) e substitui as outras
                     for pos in posicoes[1:]:
                         if idx_faltante < len(valores_faltantes):
                             novo_cromossomo[pos][caracteristica_idx] = (
@@ -243,21 +207,16 @@ def reparar_cromossomo(cromossomo: List[Tuple]) -> List[Tuple]:
     return [tuple(casa) for casa in novo_cromossomo]
 
 
-# ===================== OPERADORES DE SELEÇÃO ===================
-
-
+# seleção por roleta baseada no fitness // individuo com maior fitness tem maior probabilidade de seleção
 def selecao_roleta(
     populacao: List[List[Tuple]], valores_fitness: List[int]
 ) -> List[Tuple]:
-    """
-    Seleção por roleta russa baseada no fitness.
-    Indivíduos com maior fitness têm maior probabilidade de seleção.
-    """
     if not valores_fitness or max(valores_fitness) == 0:
         return random.choice(populacao)
 
-    # Garante valores positivos para a roleta
-    fitness_ajustado = [max(0, f) + 1 for f in valores_fitness]
+    fitness_ajustado = [
+        max(0, f) + 1 for f in valores_fitness
+    ]  # valores positivos para a roleta
     fitness_total = sum(fitness_ajustado)
 
     r = random.uniform(0, fitness_total)
@@ -271,15 +230,11 @@ def selecao_roleta(
     return populacao[-1]
 
 
+# seleção por torneio com tamanho configurável // args: populacao e valores de fitness e tamanho do torneio - numero de individuos competindo ( maior = mais seletivo)
+# return com o maior fitness --  melhor_indice
 def selecao_torneio(
     populacao: List[List[Tuple]], valores_fitness: List[int], tamanho_torneio: int = 5
 ) -> List[Tuple]:
-    """
-    Seleção por torneio com tamanho configurável.
-
-    Args:
-        tamanho_torneio: Número de indivíduos competindo (maior = mais seletivo)
-    """
     if len(populacao) < tamanho_torneio:
         tamanho_torneio = len(populacao)
 
@@ -289,16 +244,12 @@ def selecao_torneio(
     return populacao[melhor_indice]
 
 
+# seleção hibrida adaptativa -- nesse caso, a seleção é feita com base na combinacao de torneio e roleta baseada na qualidade da população
+# alto fitness máximo: torneio pequeno (intensificação)
+# baixo fitness máximo: roleta (diversificação)
 def selecao_hibrida(
     populacao: List[List[Tuple]], valores_fitness: List[int]
 ) -> List[Tuple]:
-    """
-    Seleção híbrida adaptativa.
-
-    Combina torneio e roleta baseado na qualidade da população:
-    - Alto fitness máximo: Torneio pequeno (intensificação)
-    - Baixo fitness máximo: Roleta (diversificação)
-    """
     fitness_maximo = max(valores_fitness) if valores_fitness else 0
 
     if fitness_maximo >= 14:
@@ -311,43 +262,31 @@ def selecao_hibrida(
         return selecao_roleta(populacao, valores_fitness)
 
 
-# ==================== BUSCA LOCAL E REFINAMENTO ================
-
-
+# busca local tipo hill-climbing para refinamento de soluções, especialmente eficaz para cromossomos com fitness ≥ 13, ele explora sistematicamente vizinhanças através de trocas pequenas.
 def busca_local(
     cromossomo: List[Tuple], funcao_fitness: Callable, max_iteracoes: int = 50
 ) -> List[Tuple]:
-    """
-    Busca local tipo hill-climbing para refinamento de soluções.
-
-    Especialmente eficaz para cromossomos com fitness ≥ 13.
-    Explora sistematicamente vizinhanças através de trocas pequenas.
-    """
     melhor_cromossomo = cromossomo
     melhor_fitness = funcao_fitness(cromossomo)
 
     for _ in range(max_iteracoes):
-        # Gera vizinho através de pequena perturbação
-        vizinho = gerar_vizinho(melhor_cromossomo)
+        vizinho = gerar_vizinho(
+            melhor_cromossomo
+        )  # gera vizinho através de pequena perturbação
         fitness_vizinho = funcao_fitness(vizinho)
 
-        # Aceita se houve melhoria
-        if fitness_vizinho > melhor_fitness:
+        if fitness_vizinho > melhor_fitness:  # so vai aceitar se tem a melhoria
             melhor_cromossomo = vizinho
             melhor_fitness = fitness_vizinho
 
-            # Se encontrou solução ótima, retorna imediatamente
-            if melhor_fitness == 15:
+            if melhor_fitness == 15:  # achou o resultado, para o loop
                 break
 
     return melhor_cromossomo
 
 
+# gera vizinho através de uma pequena modificação aleatória, troca entre casas adjacentes ou troca de característica específica.
 def gerar_vizinho(cromossomo: List[Tuple]) -> List[Tuple]:
-    """
-    Gera um vizinho através de uma pequena modificação aleatória.
-    Estratégias: troca entre casas adjacentes ou troca de característica específica.
-    """
     novo_cromossomo = [list(casa) for casa in cromossomo]
 
     estrategia = random.choice(
@@ -355,8 +294,7 @@ def gerar_vizinho(cromossomo: List[Tuple]) -> List[Tuple]:
     )
 
     if estrategia == "troca_adjacente" and len(novo_cromossomo) > 1:
-        # Troca característica entre casas adjacentes
-        posicao = random.randint(0, 3)
+        posicao = random.randint(0, 3)  # troca entre casas adjacentes
         caracteristica = random.randint(0, 4)
         (
             novo_cromossomo[posicao][caracteristica],
@@ -367,8 +305,9 @@ def gerar_vizinho(cromossomo: List[Tuple]) -> List[Tuple]:
         )
 
     elif estrategia == "troca_caracteristica":
-        # Troca uma característica específica entre duas casas quaisquer
-        casa1, casa2 = random.sample(range(5), 2)
+        casa1, casa2 = random.sample(
+            range(5), 2
+        )  # Troca uma característica específica entre duas casas quaisquer
         caracteristica = random.randint(0, 4)
         (
             novo_cromossomo[casa1][caracteristica],
@@ -379,7 +318,7 @@ def gerar_vizinho(cromossomo: List[Tuple]) -> List[Tuple]:
         )
 
     else:  # troca_aleatoria
-        # Mutação padrão
+        # mutação padrão
         casa1, casa2 = random.sample(range(5), 2)
         caracteristica = random.randint(0, 4)
         (
@@ -393,38 +332,31 @@ def gerar_vizinho(cromossomo: List[Tuple]) -> List[Tuple]:
     return [tuple(casa) for casa in novo_cromossomo]
 
 
-# ================= ESTRATÉGIAS ESPECIALIZADAS ==================
-
-
+# cria descendentes de alta qualidade através de cruzamento dirigido da elite
+# 1. Seleciona pais de alto fitness
+# 2. Aplica cruzamento avançado
+# 3. Refinamento via busca local
 def criar_descendentes_elite(
     populacao_elite: List[List[Tuple]],
     valores_fitness: List[int],
     funcao_fitness: Callable,
 ) -> List[List[Tuple]]:
-    """
-    Cria descendentes de alta qualidade através de cruzamento dirigido da elite.
-
-    Metodologia:
-    1. Seleciona pais de alto fitness
-    2. Aplica cruzamento avançado
-    3. Refinamento via busca local
-    """
     descendentes = []
 
-    # Garante população mínima para operação
-    if len(populacao_elite) < 2:
+    if len(populacao_elite) < 2:  # população minima para operação
         return descendentes
 
     for _ in range(min(20, len(populacao_elite))):
-        # Seleção dirigida: prioriza indivíduos de alto fitness
-        pai1 = selecao_torneio(populacao_elite, valores_fitness, 3)
+        pai1 = selecao_torneio(
+            populacao_elite, valores_fitness, 3
+        )  # seleção dirigida: prioriza indivíduos de alto fitness
         pai2 = selecao_torneio(populacao_elite, valores_fitness, 3)
 
-        # Cruzamento avançado com alta probabilidade
-        filho1, filho2 = cruzamento_avancado(pai1, pai2, 0.95)
+        filho1, filho2 = cruzamento_avancado(
+            pai1, pai2, 0.95
+        )  # cruzamento avançado com alta probabilidade
 
-        # Refinamento via busca local
-        filho1 = busca_local(filho1, funcao_fitness, 10)
+        filho1 = busca_local(filho1, funcao_fitness, 10)  # busca local para refinamento
         filho2 = busca_local(filho2, funcao_fitness, 10)
 
         descendentes.extend([filho1, filho2])
@@ -432,26 +364,17 @@ def criar_descendentes_elite(
     return descendentes
 
 
-# ================= ESTRATÉGIAS PARA REGRA 5 ====================
-
-
+# mutação especializada para resolver a Regra 5 (otimizacao)
 def mutacao_especializada_regra5(cromossomo: List[Tuple]) -> List[Tuple]:
-    """
-    Mutação especializada para resolver a Regra 5: Casa Verde à esquerda da Casa Branca.
 
-    Estratégia: Força configurações Verde-Branca em posições sequenciais válidas.
-    """
     novo_cromossomo = [list(casa) for casa in cromossomo]
 
-    # Posições válidas para Verde-Branca: (0,1), (1,2), (2,3), (3,4)
     posicoes_validas = [(0, 1), (1, 2), (2, 3), (3, 4)]
     pos_verde, pos_branca = random.choice(posicoes_validas)
 
-    # Força cores Verde e Branca nas posições escolhidas
     cor_atual_verde = novo_cromossomo[pos_verde][0]
     cor_atual_branca = novo_cromossomo[pos_branca][0]
 
-    # Encontra onde estão Verde e Branca atualmente
     pos_atual_verde = next(
         (i for i, casa in enumerate(novo_cromossomo) if casa[0] == "Verde"), -1
     )
@@ -459,7 +382,6 @@ def mutacao_especializada_regra5(cromossomo: List[Tuple]) -> List[Tuple]:
         (i for i, casa in enumerate(novo_cromossomo) if casa[0] == "Branca"), -1
     )
 
-    # Realiza as trocas necessárias
     if pos_atual_verde != -1:
         novo_cromossomo[pos_atual_verde][0] = cor_atual_verde
     if pos_atual_branca != -1:
@@ -471,13 +393,9 @@ def mutacao_especializada_regra5(cromossomo: List[Tuple]) -> List[Tuple]:
     return [tuple(casa) for casa in novo_cromossomo]
 
 
+# debug para análise científica
 def debug_status_regra5(cromossomo: List[Tuple]) -> dict:
-    """
-    Debug detalhado da Regra 5 para análise científica.
 
-    Returns:
-        Dicionário com análise completa da situação das cores Verde e Branca
-    """
     cores_casas = [casa[0] for casa in cromossomo]
 
     pos_verde = next((i for i, cor in enumerate(cores_casas) if cor == "Verde"), -1)
@@ -500,20 +418,16 @@ def debug_status_regra5(cromossomo: List[Tuple]) -> dict:
     return info
 
 
+# reparacao intensiva (otimizacao) // tenta múltiplas configurações Verde-Branca sequenciais até encontrar uma válida.
 def reparacao_intensiva_regra5(
     cromossomo: List[Tuple], max_tentativas: int = 100
 ) -> List[Tuple]:
-    """
-    Reparação intensiva focada especificamente na Regra 5.
 
-    Tenta múltiplas configurações Verde-Branca sequenciais até encontrar uma válida.
-    """
     melhor_cromossomo = cromossomo
 
     for _ in range(max_tentativas):
         candidato = mutacao_especializada_regra5(cromossomo)
 
-        # Verifica se a regra 5 foi satisfeita
         debug_info = debug_status_regra5(candidato)
         if debug_info["regra5_satisfeita"]:
             melhor_cromossomo = candidato
@@ -522,25 +436,23 @@ def reparacao_intensiva_regra5(
     return melhor_cromossomo
 
 
+# caso o debug e a mutação inteligente falhe, força a configuração Verde-Branca sequencial // teste explicitamente para todas as posições possíveis
 def forca_bruta_regra5(
     cromossomo: List[Tuple], funcao_fitness: Callable
 ) -> List[List[Tuple]]:
-    """
-    Força bruta sistemática para todas as 4 configurações possíveis de Verde-Branca.
 
-    Testa explicitamente todas as posições sequenciais válidas: (0,1), (1,2), (2,3), (3,4)
-    """
     configuracoes_geradas = []
     posicoes_verde_branca = [(0, 1), (1, 2), (2, 3), (3, 4)]
 
     for pos_verde, pos_branca in posicoes_verde_branca:
         candidato = [list(casa) for casa in cromossomo]
 
-        # Salva cores atuais das posições que serão modificadas
-        cor_original_verde = candidato[pos_verde][0]
+        cor_original_verde = candidato[pos_verde][
+            0
+        ]  # salva cores atuais das posições que serão modificadas
         cor_original_branca = candidato[pos_branca][0]
 
-        # Encontra posições atuais de Verde e Branca
+        # encontra posições atuais de Verde e Branca
         pos_atual_verde = next(
             (i for i, casa in enumerate(candidato) if casa[0] == "Verde"), -1
         )
@@ -548,13 +460,13 @@ def forca_bruta_regra5(
             (i for i, casa in enumerate(candidato) if casa[0] == "Branca"), -1
         )
 
-        # Realiza troca de cores
+        # realiza troca de cores para testar a validade
         if pos_atual_verde != -1 and pos_atual_verde != pos_verde:
             candidato[pos_atual_verde][0] = cor_original_verde
         if pos_atual_branca != -1 and pos_atual_branca != pos_branca:
             candidato[pos_atual_branca][0] = cor_original_branca
 
-        # Força configuração Verde-Branca
+        # força configuração Verde-Branca em forca bruta para finalizar o teste
         candidato[pos_verde][0] = "Verde"
         candidato[pos_branca][0] = "Branca"
 
@@ -564,18 +476,11 @@ def forca_bruta_regra5(
     return configuracoes_geradas
 
 
-# ================= ANÁLISE E DEBUG AVANÇADOS ===================
-
-
+# analise científica completa de um cromossomo // retorna um dicionário com métricas de qualidade e satisfação de restrições
 def analisar_cromossomo_detalhado(
     cromossomo: List[Tuple], funcao_fitness: Callable
 ) -> dict:
-    """
-    Análise científica completa de um cromossomo.
 
-    Returns:
-        Dicionário com métricas detalhadas de qualidade e satisfação de restrições
-    """
     fitness_total = funcao_fitness(cromossomo)
 
     analise = {
@@ -598,16 +503,9 @@ def analisar_cromossomo_detalhado(
     return analise
 
 
+# debug específico para cada regra individual - 1 a 15 // retorna um dicionário com análise detalhada da regra específica
 def debug_regra_especifica(cromossomo: List[Tuple], numero_regra: int) -> dict:
-    """
-    Debug específico para uma regra individual.
 
-    Args:
-        numero_regra: Número da regra (1-15) para análise
-
-    Returns:
-        Dicionário com análise detalhada da regra específica
-    """
     descricoes_regras = {
         1: "O Norueguês vive na primeira casa",
         2: "O Inglês vive na casa Vermelha",
@@ -632,7 +530,7 @@ def debug_regra_especifica(cromossomo: List[Tuple], numero_regra: int) -> dict:
         "detailed_analysis": "Análise específica em desenvolvimento",
     }
 
-    # Análise específica para Regra 5 (Verde-Branca)
+    # Análise específica para Regra 5 (Verde-Branca) -- apos validacao de debug e mutacao inteligente, força a configuração Verde-Branca sequencial
     if numero_regra == 5:
         debug_r5 = debug_status_regra5(cromossomo)
         analise["detailed_analysis"] = (
@@ -640,7 +538,7 @@ def debug_regra_especifica(cromossomo: List[Tuple], numero_regra: int) -> dict:
             f"Diferença: {debug_r5['diferenca_posicoes']}. Sequência: {debug_r5['sequencia_cores']}"
         )
 
-    # Análise para outras regras críticas
+    # Análise para regra 14 regras críticas
     elif numero_regra == 14:  # Norueguês vizinho da casa Azul
         pos_noruegues = next(
             (i for i, casa in enumerate(cromossomo) if casa[1] == "Norueguês"), -1
@@ -656,10 +554,9 @@ def debug_regra_especifica(cromossomo: List[Tuple], numero_regra: int) -> dict:
     return analise
 
 
+# imprime representação visual limpa do cromossomo para análise
 def imprimir_cromossomo_visual(cromossomo: List[Tuple]) -> None:
-    """
-    Imprime representação visual limpa do cromossomo para análise.
-    """
+
     print("\nCONFIGURAÇÃO DAS CASAS:")
     print("-" * 80)
     print(
@@ -675,17 +572,16 @@ def imprimir_cromossomo_visual(cromossomo: List[Tuple]) -> None:
     print("-" * 80)
 
 
+# analise dos melhores indivíduos da população
 def analise_profunda_populacao(
     populacao: List[List[Tuple]], funcao_fitness: Callable, top_n: int = 5
 ) -> None:
-    """
-    Análise científica aprofundada dos melhores indivíduos da população.
-    """
     print(f"\nANÁLISE APROFUNDADA DOS TOP {top_n} INDIVÍDUOS:")
     print("=" * 60)
 
-    # Ordena população por fitness
-    populacao_ordenada = sorted(populacao, key=funcao_fitness, reverse=True)
+    populacao_ordenada = sorted(
+        populacao, key=funcao_fitness, reverse=True
+    )  # Ordena população por fitness
 
     for i, cromossomo in enumerate(populacao_ordenada[:top_n], 1):
         fitness_atual = funcao_fitness(cromossomo)
@@ -694,48 +590,37 @@ def analise_profunda_populacao(
 
         analise = analisar_cromossomo_detalhado(cromossomo, funcao_fitness)
 
-        # Mostra configuração compacta
+        # mostra configuração compacta
         for j, casa in enumerate(cromossomo, 1):
             print(
                 f"Casa {j}: {casa[0]:<8} {casa[1]:<10} {casa[2]:<6} {casa[3]:<10} {casa[4]}"
             )
 
-        # Validação estrutural
+        # validação estrutural e de restrições
         if not all(analise["validacao_estrutural"].values()):
             print("AVISO: Cromossomo com estrutura inválida detectado!")
 
 
+# apresenta a solução final
 def mostrar_solucao(cromossomo: List[Tuple]) -> None:
-    """
-    Apresenta a solução final de forma clara e organizada.
-    """
     print("\nSOLUÇÃO ENCONTRADA:")
     print("=" * 50)
 
     imprimir_cromossomo_visual(cromossomo)
-
-    # Identifica quem tem os peixes
     for i, casa in enumerate(cromossomo, 1):
         if casa[4] == "Peixes":
             print(f"\nRESPOSTA: O {casa[1]} possui os Peixes (Casa {i})")
             break
 
 
-# ================= ESTRATÉGIAS AVANÇADAS DE ESCAPE =============
-
-
 def correcao_controlada_regra5(
     cromossomo: List[Tuple], tentativas: int = 50
 ) -> List[Tuple]:
-    """
-    Correção controlada específica para a Regra 5 com preservação de qualidade.
-    """
     melhor_cromossomo = cromossomo
 
     for _ in range(tentativas):
         candidato = mutacao_especializada_regra5(cromossomo)
 
-        # Preserva outras características de alta qualidade
         if debug_status_regra5(candidato)["regra5_satisfeita"]:
             melhor_cromossomo = candidato
             break
@@ -743,13 +628,11 @@ def correcao_controlada_regra5(
     return melhor_cromossomo
 
 
+# solucionador de emergência para casos extremos da Regra 5
 def solucionador_emergencia_regra5(
     cromossomo: List[Tuple], funcao_fitness: Callable
 ) -> List[Tuple]:
-    """
-    Solucionador de emergência para casos extremos da Regra 5.
-    Tenta todas as configurações possíveis sistematicamente.
-    """
+
     configuracoes_candidatas = forca_bruta_regra5(cromossomo, funcao_fitness)
 
     melhor_candidato = cromossomo
@@ -764,15 +647,13 @@ def solucionador_emergencia_regra5(
     return melhor_candidato
 
 
+# debug fail final, falhas persistentes na regra 5
 def ultra_debug_falha_mutacao(
     cromossomo: List[Tuple],
     funcao_fitness: Callable,
     regra_problema: int,
     tentativas: int = 1000,
 ) -> None:
-    """
-    Debug ultra-detalhado para diagnóstico de falhas persistentes.
-    """
     print(f"\nULTRA DEBUG - REGRA {regra_problema}")
     print("=" * 50)
 
@@ -793,7 +674,7 @@ def ultra_debug_falha_mutacao(
             if debug_status_regra5(candidato)["regra5_satisfeita"]:
                 sucessos += 1
 
-                if sucessos <= 3:  # Mostra apenas os primeiros sucessos
+                if sucessos <= 3:
                     print(f"\nSucesso {sucessos}: Configuração encontrada")
                     imprimir_cromossomo_visual(candidato)
                     print(f"Fitness: {funcao_fitness(candidato)}/15")
@@ -801,26 +682,21 @@ def ultra_debug_falha_mutacao(
         print(f"\nResultado: {sucessos}/{tentativas} mutações resolveram a Regra 5")
 
 
+# analisa se a população está em estagnação (convergência prematura), retorna True se está estagnada
 def analisar_estagnacao_populacao(
     populacao: List[List[Tuple]], funcao_fitness: Callable
 ) -> bool:
-    """
-    Analisa se a população está em estagnação (convergência prematura).
-
-    Returns:
-        True se estagnação for detectada, False caso contrário
-    """
     fitness_values = [funcao_fitness(cromossomo) for cromossomo in populacao]
     fitness_maximo = max(fitness_values)
 
-    # Conta quantos indivíduos têm o fitness máximo
+    # conta quantos indivíduos têm o fitness máximo
     count_maximo = fitness_values.count(fitness_maximo)
 
-    # Calcula diversidade única
+    # calcula diversidade única
     configuracoes_unicas = len(set(str(cromossomo) for cromossomo in populacao))
     percentual_diversidade = configuracoes_unicas / len(populacao)
 
-    # Critérios de estagnação
+    # critérios de estagnação
     estagnacao_por_fitness = (
         count_maximo / len(populacao) > 0.7
     )  # 70% com mesmo fitness
@@ -829,30 +705,26 @@ def analisar_estagnacao_populacao(
     return estagnacao_por_fitness and estagnacao_por_diversidade
 
 
+# estratégia de explosão de diversidade para escape de ótimos locais, cria nova população diversificada mantendo algumas cópias da melhor solução
 def explosao_diversidade(
     melhor_cromossomo: List[Tuple], tamanho_populacao: int, funcao_fitness: Callable
 ) -> List[List[Tuple]]:
-    """
-    Estratégia de explosão de diversidade para escape de ótimos locais.
-
-    Cria nova população diversificada mantendo algumas cópias da melhor solução.
-    """
     nova_populacao = []
 
-    # Preserva algumas cópias do melhor cromossomo (5%)
+    # preserva algumas cópias do melhor cromossomo (5%)
     num_preservados = max(1, int(tamanho_populacao * 0.05))
     nova_populacao.extend([melhor_cromossomo] * num_preservados)
 
-    # Gera variações do melhor cromossomo (30%)
+    # gera variações do melhor cromossomo (30%)
     num_variacoes = int(tamanho_populacao * 0.30)
     for _ in range(num_variacoes):
         variacao = melhor_cromossomo
-        # Aplica múltiplas mutações para diversificar
+        # tenativa de aplica múltiplas mutações para diversificar
         for _ in range(random.randint(2, 5)):
             variacao = mutacao(variacao, 0.8)
         nova_populacao.append(variacao)
 
-    # Preenche resto com cromossomos completamente aleatórios (65%)
+    # preenche resto com cromossomos completamente aleatórios (65%)
     restantes = tamanho_populacao - len(nova_populacao)
     for _ in range(restantes):
         nova_populacao.append(cromossomo_aleatorio())
@@ -860,19 +732,17 @@ def explosao_diversidade(
     return nova_populacao
 
 
+# força variações específicas focadas em resolver uma regra particular
 def forcar_variacoes_regra_especifica(
     cromossomo: List[Tuple], regra_numero: int, quantidade: int
 ) -> List[List[Tuple]]:
-    """
-    Força variações específicas focadas em resolver uma regra particular.
-    """
     variacoes = []
 
     for _ in range(quantidade):
         if regra_numero == 5:
             variacao = mutacao_especializada_regra5(cromossomo)
         else:
-            # Para outras regras, aplica mutação dirigida
+            # para outras regras, aplica mutação dirigida
             variacao = mutacao_dirigida(cromossomo, [regra_numero])
 
         variacoes.append(variacao)
