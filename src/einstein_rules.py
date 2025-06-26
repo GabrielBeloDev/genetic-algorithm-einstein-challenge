@@ -95,7 +95,7 @@ PESOS_REGRAS = {
     1: 1.0,  # r2 - simples
     2: 1.0,  # r3 - simples
     3: 1.0,  # r4 - simples
-    4: 1.5,  # r5 - sequencial (crítica)
+    4: 1.5,  # r5 - intermediária
     5: 1.0,  # r6 - simples
     6: 1.0,  # r7 - simples
     7: 1.0,  # r8 - simples
