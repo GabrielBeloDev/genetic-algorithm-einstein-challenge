@@ -89,11 +89,10 @@ def r15(h):  # O homem que fuma Blends é vizinho do que bebe Água
     return False
 
 
-# Lista com todas as regras para fácil importação
-RULES = [r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15]
+REGRAS = [r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15]
 
-# Pesos para regras críticas (regras de vizinhança são mais difíceis)
-RULE_WEIGHTS = {
+# Pesos para regras críticas
+PESOS_REGRAS = {
     0: 1.0,  # r1 - simples
     1: 1.0,  # r2 - simples
     2: 1.0,  # r3 - simples
@@ -112,66 +111,66 @@ RULE_WEIGHTS = {
 }
 
 
-def fitness(chrom):
+def fitness(cromossomo):
     """Função fitness: conta quantas das 15 regras são satisfeitas"""
-    return sum(r(chrom) for r in RULES)
+    return sum(regra(cromossomo) for regra in REGRAS)
 
 
-def weighted_fitness(chrom):
+def fitness_ponderado(cromossomo):
     """Função fitness com pesos para regras críticas"""
     total = 0.0
-    for i, rule in enumerate(RULES):
-        if rule(chrom):
-            total += RULE_WEIGHTS[i]
+    for i, regra in enumerate(REGRAS):
+        if regra(cromossomo):
+            total += PESOS_REGRAS[i]
     return total
 
 
-def get_missing_rules(chrom):
+def obter_regras_faltantes(cromossomo):
     """Retorna os índices das regras que não estão sendo satisfeitas"""
-    missing = []
-    for i, rule in enumerate(RULES):
-        if not rule(chrom):
-            missing.append(i + 1)  # +1 para ficar 1-indexed
-    return missing
+    faltantes = []
+    for i, regra in enumerate(REGRAS):
+        if not regra(cromossomo):
+            faltantes.append(i + 1)  # +1 para ficar 1-indexed
+    return faltantes
 
 
-def detailed_fitness_report(chrom):
+def relatorio_detalhado_fitness(cromossomo):
     """Retorna relatório detalhado do fitness"""
-    satisfied = []
-    missing = []
+    satisfeitas = []
+    faltantes = []
 
-    for i, rule in enumerate(RULES):
-        if rule(chrom):
-            satisfied.append(i + 1)
+    for i, regra in enumerate(REGRAS):
+        if regra(cromossomo):
+            satisfeitas.append(i + 1)
         else:
-            missing.append(i + 1)
+            faltantes.append(i + 1)
 
     return {
-        "score": len(satisfied),
-        "satisfied": satisfied,
-        "missing": missing,
-        "weighted_score": weighted_fitness(chrom),
+        "score": len(satisfeitas),
+        "satisfied": satisfeitas,
+        "missing": faltantes,
+        "weighted_score": fitness_ponderado(cromossomo),
     }
 
 
-def partial_fitness_scores(chrom):
+def pontuacoes_parciais_fitness(cromossomo):
     """Retorna pontuações parciais para análise"""
     # Agrupa regras por tipo
-    simple_rules = [0, 1, 2, 3, 5, 6, 7, 8, 11, 12]  # Regras simples
-    position_rules = [0, 8]  # Regras de posição fixa
-    sequence_rules = [4]  # Regras sequenciais
-    neighbor_rules = [9, 10, 13, 14]  # Regras de vizinhança
+    regras_simples = [0, 1, 2, 3, 5, 6, 7, 8, 11, 12]  # Regras simples
+    regras_posicao = [0, 8]  # Regras de posição fixa
+    regras_sequencia = [4]  # Regras sequenciais
+    regras_vizinhanca = [9, 10, 13, 14]  # Regras de vizinhança
 
-    scores = {}
+    pontuacoes = {}
 
-    for category, rule_indices in [
-        ("simple", simple_rules),
-        ("position", position_rules),
-        ("sequence", sequence_rules),
-        ("neighbor", neighbor_rules),
+    for categoria, indices_regras in [
+        ("simples", regras_simples),
+        ("posicao", regras_posicao),
+        ("sequencia", regras_sequencia),
+        ("vizinhanca", regras_vizinhanca),
     ]:
-        satisfied = sum(1 for i in rule_indices if RULES[i](chrom))
-        total = len(rule_indices)
-        scores[category] = f"{satisfied}/{total}"
+        satisfeitas = sum(1 for i in indices_regras if REGRAS[i](cromossomo))
+        total = len(indices_regras)
+        pontuacoes[categoria] = f"{satisfeitas}/{total}"
 
-    return scores
+    return pontuacoes
