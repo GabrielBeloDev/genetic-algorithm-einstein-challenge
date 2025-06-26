@@ -322,10 +322,11 @@ Este projeto está licenciado sob a licença MIT - veja o arquivo [LICENSE](LICE
 - GitHub: [@GabrielBeloDev](https://github.com/GabrielBeloDev)
 - LinkedIn: [Gabriel Belo](https://www.linkedin.com/in/gabriel--belo)
 
----
+**Gabriel Bastos Rabelo**
+
+**Joao Felipe Launé**
 
 **Disciplina**: Inteligência Artificial  
-**Professor**: Tiago Bonini Borchartt  
-**Instituição**: [Sua Instituição]
+**Professor**: Tiago Bonini Borchartt
 
 ⭐ **Se este projeto foi útil para seus estudos ou pesquisa, considere dar uma estrela no repositório!**
