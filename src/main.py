@@ -3,12 +3,13 @@ Algoritmo Genético OTIMIZADO para resolver o Desafio de Einstein
 Disciplina: Inteligência Artificial
 Prof. Tiago Bonini Borchartt
 
-VERSÃO OTIMIZADA COM ESTRATÉGIAS AVANÇADAS
+VERSÃO ACADÊMICA COM ESTRATÉGIAS AVANÇADAS
 """
 
 import time
 import random
 import copy
+from typing import List
 
 from genetic_algorithm import (
     random_chrom,
@@ -45,672 +46,752 @@ from einstein_rules import (
     partial_fitness_scores,
 )
 
-# Parâmetros otimizados dinamicamente
-BASE_POPULATION_SIZE = 3000
-MAX_POPULATION_SIZE = 5000
-BASE_CROSSOVER_RATE = 0.90
-BASE_MUTATION_RATE = 0.15
-SURVIVAL_RATE = 0.10
-IMMIGRATION_RATE = 0.15
+# === CONFIGURAÇÕES DO ALGORITMO GENÉTICO ===
+TAMANHO_POPULACAO_BASE = 3000
+TAXA_CROSSOVER_BASE = 0.85
+TAXA_MUTACAO_BASE = 0.15
+TAMANHO_MAXIMO_POPULACAO = 5000
 
 
-class AdvancedGeneticAlgorithm:
+class AlgoritmoGeneticoAvancado:
+    """
+    Algoritmo Genético Avançado para resolver o Desafio de Einstein.
+
+    Implementa estratégias adaptativas incluindo:
+    - Seleção híbrida (torneio + roleta)
+    - Mutação dirigida para regras específicas
+    - Busca local para refinamento
+    - Controle adaptativo de parâmetros
+    - Diversificação populacional dinâmica
+    """
+
     def __init__(self):
-        self.population_size = BASE_POPULATION_SIZE
-        self.crossover_rate = BASE_CROSSOVER_RATE
-        self.mutation_rate = BASE_MUTATION_RATE
+        # Parâmetros principais do algoritmo
+        self.tamanho_populacao = TAMANHO_POPULACAO_BASE
+        self.taxa_crossover = TAXA_CROSSOVER_BASE
+        self.taxa_mutacao = TAXA_MUTACAO_BASE
 
-        # Controle adaptativo
-        self.generations_without_improvement = 0
-        self.current_best_fitness = 0
-        self.generations_at_14 = 0
-        self.generations_at_13 = 0
+        # Controle de progresso e adaptação
+        self.geracoes_sem_melhoria = 0
+        self.melhor_fitness_atual = 0
+        self.geracoes_no_fitness_14 = 0
+        self.geracoes_no_fitness_13 = 0
 
-        # Estatísticas
-        self.fitness_history = []
-        self.diversity_history = []
+        # Histórico para análise acadêmica
+        self.historico_fitness = []
+        self.historico_diversidade = []
 
-    def adapt_parameters(self, best_fitness, diversity):
-        """Adapta parâmetros baseado no progresso atual"""
+    def adaptar_parametros(self, melhor_fitness, diversidade):
+        """
+        Adaptação dinâmica dos parâmetros do algoritmo baseada no progresso.
 
-        if best_fitness >= 14:
-            # MODO SPRINT FINAL - máxima intensidade
-            self.population_size = min(MAX_POPULATION_SIZE, self.population_size + 100)
-            self.mutation_rate = 0.4  # 40% - exploração máxima
-            self.crossover_rate = 0.95
+        Estratégia acadêmica: Intensificação vs Diversificação
+        - Alta aptidão (14-15): Intensificação (busca local intensiva)
+        - Média aptidão (11-13): Equilíbrio
+        - Baixa aptidão (<11): Diversificação (exploração ampla)
+        """
 
-        elif best_fitness >= 13:
-            # MODO CONVERGÊNCIA FOCADA
-            self.population_size = min(4000, self.population_size + 50)
-            self.mutation_rate = 0.25  # 25%
-            self.crossover_rate = 0.90
+        if melhor_fitness >= 14:
+            # Fase de intensificação: busca refinada na região promissora
+            self.tamanho_populacao = min(
+                TAMANHO_MAXIMO_POPULACAO, self.tamanho_populacao + 100
+            )
+            self.taxa_mutacao = 0.4  # Mutação intensiva para escape de ótimos locais
+            self.taxa_crossover = 0.95
 
-        elif best_fitness >= 11:
-            # MODO EXPLORAÇÃO MODERADA
-            self.mutation_rate = 0.20
-            self.crossover_rate = 0.85
+        elif melhor_fitness >= 13:
+            # Fase de convergência guiada: foco nas soluções de alta qualidade
+            self.tamanho_populacao = min(4000, self.tamanho_populacao + 50)
+            self.taxa_mutacao = 0.25
+            self.taxa_crossover = 0.90
+
+        elif melhor_fitness >= 11:
+            # Fase de exploração moderada: balance exploração-explotação
+            self.taxa_mutacao = 0.20
+            self.taxa_crossover = 0.85
 
         else:
-            # MODO EXPLORAÇÃO AMPLA
-            self.mutation_rate = 0.15
-            self.crossover_rate = 0.80
+            # Fase de exploração ampla: busca por regiões promissoras
+            self.taxa_mutacao = 0.15
+            self.taxa_crossover = 0.80
 
-        # Ajuste baseado na diversidade
-        if diversity < self.population_size * 0.3:  # Baixa diversidade
-            self.mutation_rate *= 1.5
+        # Ajuste baseado na diversidade populacional
+        if diversidade < self.tamanho_populacao * 0.3:  # Baixa diversidade detectada
+            self.taxa_mutacao *= 1.5  # Aumenta mutação para recuperar diversidade
 
-    def create_specialized_population(self, size):
-        """Cria população com diferentes estratégias"""
-        population = []
+    def criar_populacao_especializada(self, tamanho):
+        """
+        Criação de população inicial com estratégias diversificadas.
 
-        # 70% população aleatória
-        random_count = int(size * 0.7)
-        population.extend([random_chrom() for _ in range(random_count)])
+        Metodologia acadêmica:
+        - 70% população aleatória (exploração)
+        - 20% população com heurísticas (satisfaz regras fáceis)
+        - 10% população híbrida
+        """
+        populacao = []
 
-        # 20% população com regras fixas satisfeitas
-        fixed_count = int(size * 0.2)
-        for _ in range(fixed_count):
-            chrom = random_chrom()
-            # Força algumas regras fáceis
-            # Regra 1: Norueguês na primeira casa
-            houses = [list(house) for house in chrom]
-            for i, house in enumerate(houses):
-                if house[1] == "Norueguês":
-                    houses[0][1], houses[i][1] = houses[i][1], houses[0][1]
+        # Estratégia 1: População aleatória para exploração ampla
+        individuos_aleatorios = int(tamanho * 0.7)
+        populacao.extend([random_chrom() for _ in range(individuos_aleatorios)])
+
+        # Estratégia 2: População com heurísticas aplicadas
+        individuos_heuristicos = int(tamanho * 0.2)
+        for _ in range(individuos_heuristicos):
+            cromossomo = random_chrom()
+            # Aplica heurística: Regra 1 (Norueguês na primeira casa)
+            casas = [list(casa) for casa in cromossomo]
+            for i, casa in enumerate(casas):
+                if casa[1] == "Norueguês":
+                    casas[0][1], casas[i][1] = casas[i][1], casas[0][1]
                     break
 
-            # Regra 9: Leite na casa do meio
-            houses[2][2] = "Leite"
+            # Aplica heurística: Regra 9 (Leite na casa central)
+            casas[2][2] = "Leite"
 
-            chrom = [tuple(house) for house in houses]
-            population.append(chrom)
+            cromossomo = [tuple(casa) for casa in casas]
+            populacao.append(cromossomo)
 
-        # 10% população restante aleatória
-        remaining = size - len(population)
-        population.extend([random_chrom() for _ in range(remaining)])
+        # Estratégia 3: Completa com população aleatória
+        restantes = tamanho - len(populacao)
+        populacao.extend([random_chrom() for _ in range(restantes)])
 
-        return population
+        return populacao
 
-    def run(self):
-        """Executa o algoritmo genético otimizado"""
-        print("🧬 ALGORITMO GENÉTICO OTIMIZADO - DESAFIO DE EINSTEIN")
+    def executar(self):
+        """
+        Execução principal do Algoritmo Genético Avançado.
+
+        Processo acadêmico estruturado:
+        1. Inicialização da população
+        2. Avaliação de aptidão
+        3. Seleção de pais
+        4. Operadores genéticos (crossover + mutação)
+        5. Substituição geracional
+        6. Análise de convergência
+        """
         print("=" * 80)
-        print("🎯 OBJETIVO: Encontrar solução 15/15")
-        print("🚀 ESTRATÉGIAS: Busca Local + Seleção Híbrida + Mutação Dirigida")
-        print("🔄 LIMITE: 500 gerações para debug")
+        print("ALGORITMO GENÉTICO PARA O DESAFIO LÓGICO DE EINSTEIN")
+        print("=" * 80)
+        print("📋 OBJETIVO: Resolver o puzzle de satisfação de 15 restrições")
+        print("🧬 METODOLOGIA: Algoritmo Genético com Estratégias Adaptativas")
+        print("📊 LIMITE COMPUTACIONAL: 1000 gerações")
+        print("📈 CRITÉRIO DE SUCESSO: Aptidão = 15/15 (todas as regras satisfeitas)")
         print("=" * 80)
 
-        start_time = time.time()
-        MAX_GENERATIONS = 500  # LIMITE PARA DEBUG
+        tempo_inicio = time.time()
+        LIMITE_GERACOES = 1000  # Limite acadêmico para análise
 
-        # População inicial especializada
-        POP = self.create_specialized_population(self.population_size)
+        # Fase 1: Inicialização da população
+        print("\n🔄 FASE 1: INICIALIZAÇÃO DA POPULAÇÃO DIVERSIFICADA")
+        populacao = self.criar_populacao_especializada(self.tamanho_populacao)
+        print(f"   ✅ População inicial criada: {len(populacao)} indivíduos")
 
-        generation = 0
-        best_ever_fitness = 0
-        best_ever_chromosome = None
-        time_at_14 = None
+        geracao = 0
+        melhor_fitness_global = 0
+        melhor_cromossomo_global = None
+        tempo_atingiu_14 = None
 
-        print("📈 EVOLUÇÃO DETALHADA:")
+        print("\n📈 EVOLUÇÃO DO ALGORITMO:")
         print(
-            "   Geração | Fitness | Pop.Size | Div% | Tempo(s) | Status & Estratégias"
+            "   Geração | Aptidão | Tamanho Pop | Diversidade | Tempo | Status Evolutivo"
         )
         print("-" * 85)
 
+        # === LOOP EVOLUTIVO PRINCIPAL ===
         while True:
-            generation += 1
+            geracao += 1
 
-            # CRITÉRIO DE PARADA - LIMITE DE GERAÇÕES PARA DEBUG
-            if generation > MAX_GENERATIONS:
-                elapsed = time.time() - start_time
-                print(f"\n⏰ LIMITE DE GERAÇÕES ATINGIDO: {MAX_GENERATIONS}")
-                print(f"   🏆 Melhor fitness: {best_ever_fitness}/15")
-                print(f"   ⏱️ Tempo total: {elapsed:.1f}s")
-                print(f"   📊 Média: {elapsed/generation:.3f}s por geração")
-
-                if best_ever_fitness == 14:
-                    missing = get_missing_rules(best_ever_chromosome)
-                    print(f"   🎯 Faltou apenas: Regra {missing[0]}")
-                    print_chromosome_visual(best_ever_chromosome)
-
-                return best_ever_chromosome, best_ever_fitness
-
-            # 1. AVALIAÇÃO COMPLETA
-            fitness_values = [fitness(chrom) for chrom in POP]
-
-            # Ordenar por fitness
-            sorted_indices = sorted(
-                range(len(POP)), key=lambda i: fitness_values[i], reverse=True
-            )
-            POP = [POP[i] for i in sorted_indices]
-            fitness_values = [fitness_values[i] for i in sorted_indices]
-
-            best_chrom = POP[0]
-            best_fitness = fitness_values[0]
-            avg_fitness = sum(fitness_values) / len(fitness_values)
-            diversity = len(set(str(chrom) for chrom in POP))
-            diversity_percent = (diversity / len(POP)) * 100
-            elapsed = time.time() - start_time
-
-            # Atualizar estatísticas
-            self.fitness_history.append(best_fitness)
-            self.diversity_history.append(diversity_percent)
-
-            # Controle de progresso
-            if best_fitness > best_ever_fitness:
-                best_ever_fitness = best_fitness
-                best_ever_chromosome = copy.deepcopy(best_chrom)
-                self.generations_without_improvement = 0
-
-                if best_fitness == 14 and time_at_14 is None:
-                    time_at_14 = elapsed
-                    self.generations_at_14 = 0
-            else:
-                self.generations_without_improvement += 1
-
-            if best_fitness == 13:
-                self.generations_at_13 += 1
-            elif best_fitness == 14:
-                self.generations_at_14 += 1
-
-            self.adapt_parameters(best_fitness, diversity)
-
-            # LOG DETALHADO
-            should_log = (
-                generation % 25 == 0
-                or generation < 50
-                or best_fitness >= 13
-                or self.generations_without_improvement % 200 == 0
-            )
-
-            if should_log:
+            # Critério de parada: limite computacional
+            if geracao > LIMITE_GERACOES:
+                tempo_total = time.time() - tempo_inicio
                 print(
-                    f"   {generation:7d} | {best_fitness:2d}/15   | {len(POP):6d} | {diversity_percent:3.0f}% | {elapsed:6.1f}s | ",
+                    f"\n⏱️ EXPERIMENTO CONCLUÍDO: {LIMITE_GERACOES} gerações executadas"
+                )
+                print(f"   🏆 Melhor aptidão encontrada: {melhor_fitness_global}/15")
+                print(f"   ⏱️ Tempo computacional total: {tempo_total:.1f} segundos")
+                print(f"   📊 Eficiência: {tempo_total/geracao:.3f}s por geração")
+
+                if melhor_fitness_global == 14:
+                    regras_faltantes = get_missing_rules(melhor_cromossomo_global)
+                    print(
+                        f"   📋 Análise final: Faltou satisfazer apenas a Regra {regras_faltantes[0]}"
+                    )
+                    print("\n📊 CONFIGURAÇÃO FINAL:")
+                    print_chromosome_visual(melhor_cromossomo_global)
+
+                return melhor_cromossomo_global, melhor_fitness_global
+
+            # Fase 2: Avaliação da população
+            valores_fitness = [fitness(cromossomo) for cromossomo in populacao]
+
+            # Ordenação por aptidão (seleção por ranking)
+            indices_ordenados = sorted(
+                range(len(populacao)), key=lambda i: valores_fitness[i], reverse=True
+            )
+            populacao = [populacao[i] for i in indices_ordenados]
+            valores_fitness = [valores_fitness[i] for i in indices_ordenados]
+
+            # Análise estatística da geração atual
+            melhor_cromossomo = populacao[0]
+            melhor_fitness = valores_fitness[0]
+            fitness_medio = sum(valores_fitness) / len(valores_fitness)
+            diversidade_populacional = len(
+                set(str(cromossomo) for cromossomo in populacao)
+            )
+            percentual_diversidade = (diversidade_populacional / len(populacao)) * 100
+            tempo_decorrido = time.time() - tempo_inicio
+
+            # Atualização do histórico acadêmico
+            self.historico_fitness.append(melhor_fitness)
+            self.historico_diversidade.append(percentual_diversidade)
+
+            # Controle de progresso evolutivo
+            if melhor_fitness > melhor_fitness_global:
+                melhor_fitness_global = melhor_fitness
+                melhor_cromossomo_global = copy.deepcopy(melhor_cromossomo)
+                self.geracoes_sem_melhoria = 0
+
+                if melhor_fitness == 14 and tempo_atingiu_14 is None:
+                    tempo_atingiu_14 = tempo_decorrido
+                    self.geracoes_no_fitness_14 = 0
+                    print(
+                        f"\n🎯 MARCO CIENTÍFICO: Aptidão 14/15 atingida em {tempo_decorrido:.1f}s!"
+                    )
+            else:
+                self.geracoes_sem_melhoria += 1
+
+            # Contadores específicos para análise
+            if melhor_fitness == 13:
+                self.geracoes_no_fitness_13 += 1
+            elif melhor_fitness == 14:
+                self.geracoes_no_fitness_14 += 1
+
+            # Adaptação dinâmica dos parâmetros
+            self.adaptar_parametros(melhor_fitness, diversidade_populacional)
+
+            # === CRITÉRIO DE PARADA: SOLUÇÃO ÓTIMA ENCONTRADA ===
+            if melhor_fitness == 15:
+                tempo_total = time.time() - tempo_inicio
+                print(f"\n🎉 SOLUÇÃO ÓTIMA ENCONTRADA!")
+                print("=" * 80)
+                print(
+                    "📋 RESULTADO CIENTÍFICO: Problema de Satisfação de Restrições RESOLVIDO"
+                )
+                print(f"⏱️ Tempo de convergência: {tempo_total:.2f} segundos")
+                print(f"🔄 Gerações necessárias: {geracao}")
+                print(
+                    f"📊 Eficiência computacional: {tempo_total/geracao:.3f}s por geração"
+                )
+                print(f"🧬 Tamanho final da população: {len(populacao)} indivíduos")
+                print(f"📈 Diversidade final: {percentual_diversidade:.1f}%")
+                print("=" * 80)
+                print("\n📋 CONFIGURAÇÃO SOLUÇÃO (Todas as 15 regras satisfeitas):")
+                show_solution(melhor_cromossomo)
+                print(
+                    "\n✅ Verificação: Este resultado satisfaz todas as restrições do problema."
+                )
+                return melhor_cromossomo, 15
+
+            # Logging acadêmico detalhado
+            deve_registrar_log = (
+                geracao % 25 == 0
+                or geracao < 50
+                or melhor_fitness >= 13
+                or self.geracoes_sem_melhoria % 200 == 0
+            )
+
+            if deve_registrar_log:
+                print(
+                    f"   {geracao:7d} | {melhor_fitness:2d}/15   | {len(populacao):6d} | {percentual_diversidade:8.1f}% | {tempo_decorrido:6.1f}s | ",
                     end="",
                 )
 
-                # Status detalhado com estratégias ativas
-                if best_fitness == 15:
-                    print("🎉 SOLUÇÃO PERFEITA ENCONTRADA!")
-                elif best_fitness == 14:
-                    missing = get_missing_rules(best_chrom)
+                # Status evolutivo acadêmico
+                if melhor_fitness == 15:
+                    print("🎉 SOLUÇÃO ÓTIMA ENCONTRADA!")
+                elif melhor_fitness == 14:
+                    regras_faltantes = get_missing_rules(melhor_cromossomo)
 
-                    # DEBUG MEGA DETALHADO
-                    if (
-                        generation % 10 == 0 or self.generations_at_14 == 1
-                    ):  # A cada 10 gerações ou primeira vez no 14
-                        missing_rule = missing[0]
-                        rule_debug = debug_specific_rule(best_chrom, missing_rule)
-
-                        print(
-                            f"🔥 R{missing_rule} TRAVADO: {rule_debug['description']}"
+                    # Análise detalhada quando próximo da solução
+                    if geracao % 10 == 0 or self.geracoes_no_fitness_14 == 1:
+                        regra_faltante = regras_faltantes[0]
+                        analise_regra = debug_specific_rule(
+                            melhor_cromossomo, regra_faltante
                         )
-                        print(f"    🔍 Debug: {rule_debug['detailed_analysis']}")
 
-                        # Se ficar muito tempo preso, faz análise completa
+                        print(f"Refinamento: Regra {regra_faltante} pendente")
+                        print(f"    📋 Descrição: {analise_regra['description']}")
+                        print(f"    🔍 Análise: {analise_regra['detailed_analysis']}")
+
+                        # Análise aprofundada em marcos específicos
                         if (
-                            self.generations_at_14 % 50 == 0
-                            and self.generations_at_14 > 0
+                            self.geracoes_no_fitness_14 % 50 == 0
+                            and self.geracoes_no_fitness_14 > 0
                         ):
                             print(
-                                f"\n⚠️  ANÁLISE COMPLETA - PRESO EM R{missing_rule} há {self.generations_at_14} gerações!"
+                                f"\n📊 ANÁLISE CIENTÍFICA: Estagnação detectada na Regra {regra_faltante} ({self.geracoes_no_fitness_14} gerações)"
                             )
-                            deep_population_analysis(POP[:10], fitness, 3)
+                            deep_population_analysis(populacao[:10], fitness, 3)
                     else:
-                        missing_rule = missing[0]
+                        regra_faltante = regras_faltantes[0]
                         print(
-                            f"🔥 R{missing_rule} PRESO há {self.generations_at_14} gens | Mut:{self.mutation_rate*100:.0f}% | Pop:{len(POP)}"
+                            f"Otimização local: R{regra_faltante} | Parâmetros: Mut={self.taxa_mutacao*100:.0f}% | Pop={len(populacao)}"
                         )
 
-                elif best_fitness == 13:
-                    missing = get_missing_rules(best_chrom)
+                elif melhor_fitness == 13:
+                    regras_faltantes = get_missing_rules(melhor_cromossomo)
                     print(
-                        f"🎯 Foco 13→14! Faltam: {missing} (há {self.generations_at_13} gens)"
+                        f"Convergência intermediária: {len(regras_faltantes)} regras pendentes ({self.geracoes_no_fitness_13} gerações)"
                     )
-                elif best_fitness >= 11:
-                    trend = "↗️" if self.generations_without_improvement < 100 else "↔️"
-                    print(f"📈 Evolução {trend} | Mut:{self.mutation_rate*100:.0f}%")
-                else:
-                    print(
-                        f"🌱 Exploração | Mut:{self.mutation_rate*100:.0f}% | Avg:{avg_fitness:.1f}"
+                elif melhor_fitness >= 11:
+                    tendencia = (
+                        "Progresso positivo"
+                        if self.geracoes_sem_melhoria < 100
+                        else "Estabilização"
                     )
-
-            # 2. CRITÉRIO DE PARADA - SOLUÇÃO ENCONTRADA!
-            if best_fitness == 15:
-                print()
-                print("🎉" * 25)
-                print("                SOLUÇÃO 15/15 ENCONTRADA!")
-                print("🎉" * 25)
-                break
-
-            # 3. ESTRATÉGIAS DE DIVERSIFICAÇÃO
-            if self.generations_without_improvement > 1000:
-                if best_fitness >= 14:
-                    # Para fitness 14, diversificação suave
-                    elite_size = int(len(POP) * 0.15)  # 15% elite
                     print(
-                        f"   {generation:7d} | {best_fitness:2d}/15   | {len(POP):6d} | {diversity_percent:3.0f}% | {elapsed:6.1f}s | 🔄 Diversif. Suave (15% elite)"
+                        f"Exploração: {tendencia} | Mutação={self.taxa_mutacao*100:.0f}%"
                     )
                 else:
-                    # Para fitness menor, diversificação mais agressiva
-                    elite_size = int(len(POP) * 0.08)  # 8% elite
                     print(
-                        f"   {generation:7d} | {best_fitness:2d}/15   | {len(POP):6d} | {diversity_percent:3.0f}% | {elapsed:6.1f}s | 🔄 Diversif. Agressiva (8% elite)"
+                        f"Busca inicial | Mutação={self.taxa_mutacao*100:.0f}% | Aptidão média={fitness_medio:.1f}"
                     )
 
-                POP = POP[:elite_size] + self.create_specialized_population(
-                    len(POP) - elite_size
+            # === ESTRATÉGIAS ESPECIALIZADAS PARA ALTA APTIDÃO ===
+            if melhor_fitness == 14:
+                regras_faltantes = get_missing_rules(melhor_cromossomo)
+                regra_pendente = regras_faltantes[0] if regras_faltantes else None
+
+                if regra_pendente:
+                    # Estratégia acadêmica: Análise de convergência prematura
+                    if geracao % 25 == 0:
+                        print(f"\n📊 ANÁLISE DE CONVERGÊNCIA:")
+                        print(f"   🎯 Regra pendente: {regra_pendente}")
+                        regra_debug = debug_specific_rule(
+                            melhor_cromossomo, regra_pendente
+                        )
+                        print(f"   📋 {regra_debug['description']}")
+                        print(f"   🔍 {regra_debug['detailed_analysis']}")
+                        print_chromosome_visual(melhor_cromossomo)
+
+                    # Estratégia de intensificação baseada no tempo de estagnação
+                    if self.geracoes_no_fitness_14 > 20:  # Busca dirigida
+                        print(
+                            f"   {geracao:7d} | {melhor_fitness:2d}/15   | {len(populacao):6d} | {percentual_diversidade:3.0f}% | {tempo_decorrido:6.1f}s | Busca dirigida (Regra {regra_pendente})"
+                        )
+
+                        # Aplicação de mutação dirigida na elite
+                        for i in range(min(50, len(populacao))):
+                            if fitness(populacao[i]) == 14:
+                                regras_falt = get_missing_rules(populacao[i])
+                                if regras_falt:
+                                    populacao[i] = directed_mutate(
+                                        populacao[i], regras_falt
+                                    )
+
+                    elif self.geracoes_no_fitness_14 > 50:  # Busca local intensiva
+                        print(
+                            f"   {geracao:7d} | {melhor_fitness:2d}/15   | {len(populacao):6d} | {percentual_diversidade:3.0f}% | {tempo_decorrido:6.1f}s | Busca local intensiva (Regra {regra_pendente})"
+                        )
+
+                        # Busca local nos melhores candidatos
+                        for i in range(min(30, len(populacao))):
+                            if fitness(populacao[i]) == 14:
+                                candidato_melhorado = local_search(
+                                    populacao[i], fitness, 30
+                                )
+                                if fitness(candidato_melhorado) > fitness(populacao[i]):
+                                    populacao[i] = candidato_melhorado
+
+                    elif self.geracoes_no_fitness_14 > 100:  # Estratégia de escape
+                        print(
+                            f"   {geracao:7d} | {melhor_fitness:2d}/15   | {len(populacao):6d} | {percentual_diversidade:3.0f}% | {tempo_decorrido:6.1f}s | Estratégia de escape de ótimo local"
+                        )
+
+                        # Força bruta especializada na regra pendente
+                        versoes_especializadas = (
+                            brute_force_rule5(melhor_cromossomo, fitness)
+                            if regra_pendente == 5
+                            else []
+                        )
+
+                        if versoes_especializadas:
+                            populacao.extend(versoes_especializadas[:50])
+
+            # Análise de diversidade populacional (marco acadêmico)
+            if geracao % 50 == 0:
+                print(f"\n📊 ANÁLISE POPULACIONAL DETALHADA - GERAÇÃO {geracao}")
+                print(f"   🧬 Tamanho da população: {len(populacao)} indivíduos")
+                print(
+                    f"   📈 Diversidade genética: {diversidade_populacional}/{len(populacao)} = {percentual_diversidade:.1f}%"
                 )
-                self.generations_without_improvement = 0
+                print(
+                    f"   🏆 Indivíduos de alta aptidão (14/15): {sum(1 for f in valores_fitness if f == 14)}"
+                )
+                print(
+                    f"   📊 Indivíduos de aptidão intermediária (13/15): {sum(1 for f in valores_fitness if f == 13)}"
+                )
+                print(
+                    f"   📉 Indivíduos de baixa aptidão (<13): {sum(1 for f in valores_fitness if f < 13)}"
+                )
+
+                # Análise de convergência prematura
+                solucoes_14 = [
+                    cromossomo for cromossomo in populacao if fitness(cromossomo) == 14
+                ]
+                if solucoes_14:
+                    regras_faltantes_distribuicao = {}
+                    for cromossomo in solucoes_14[:100]:
+                        regras_faltantes = get_missing_rules(cromossomo)
+                        if regras_faltantes:
+                            regra_num = regras_faltantes[0]
+                            regras_faltantes_distribuicao[regra_num] = (
+                                regras_faltantes_distribuicao.get(regra_num, 0) + 1
+                            )
+
+                    configuracoes_unicas = set(
+                        str(cromossomo) for cromossomo in solucoes_14[:100]
+                    )
+                    print(
+                        f"   🔬 Configurações únicas (14/15): {len(configuracoes_unicas)}"
+                    )
+                    print(
+                        f"   📋 Distribuição de regras pendentes: {regras_faltantes_distribuicao}"
+                    )
+
+                    # Detecção de convergência prematura
+                    if len(configuracoes_unicas) < 10:
+                        print(
+                            f"   ⚠️ ALERTA ACADÊMICO: Convergência prematura detectada!"
+                        )
+                        print(
+                            f"   📚 Interpretação: População convergiu para soluções similares"
+                        )
+
+                        # Teste de força bruta científico
+                        if melhor_fitness == 14:
+                            print(f"\n🔬 EXPERIMENTO: Teste de otimalidade local")
+                            melhor_14 = max(solucoes_14, key=fitness)
+                            print_chromosome_visual(melhor_14)
+
+                            print(
+                                f"🧪 Testando configurações alternativas para escape:"
+                            )
+                            candidato_teste = [list(casa) for casa in melhor_14]
+
+                            # Teste sistemático das 4 configurações Verde-Branca
+                            for pos_verde, pos_branca in [
+                                (0, 1),
+                                (1, 2),
+                                (2, 3),
+                                (3, 4),
+                            ]:
+                                copia_teste = [list(casa) for casa in candidato_teste]
+
+                                # Força configuração Verde-Branca sequencial
+                                copia_teste[pos_verde][0] = "Verde"
+                                copia_teste[pos_branca][0] = "Branca"
+
+                                # Redistribui outras cores
+                                outras_cores = ["Amarela", "Azul", "Vermelha"]
+                                posicoes_restantes = [
+                                    i
+                                    for i in range(5)
+                                    if i != pos_verde and i != pos_branca
+                                ]
+
+                                for i, pos in enumerate(posicoes_restantes[:3]):
+                                    if i < len(outras_cores):
+                                        copia_teste[pos][0] = outras_cores[i]
+
+                                fitness_teste = fitness(
+                                    [tuple(casa) for casa in copia_teste]
+                                )
+                                print(
+                                    f"      Configuração Verde:{pos_verde+1}→Branca:{pos_branca+1} = Aptidão {fitness_teste}/15"
+                                )
+
+                                if fitness_teste == 15:
+                                    print(
+                                        f"\n🎉 DESCOBERTA CIENTÍFICA: Solução ótima identificada!"
+                                    )
+                                    return [tuple(casa) for casa in copia_teste], 15
+
+                    # Estratégia de diversificação populacional
+                    convergencia_detectada = analyze_population_stagnation(
+                        populacao[:100], fitness
+                    )
+
+                    if convergencia_detectada:
+                        print(f"\n🔄 APLICANDO ESTRATÉGIA DE DIVERSIFICAÇÃO")
+                        print(
+                            f"   📚 Justificativa acadêmica: Escape de ótimo local via perturbação"
+                        )
+                        print(f"   🎯 Metodologia: Explosão de diversidade guiada")
+
+                        # Diversificação científica
+                        populacao = diversity_explosion(
+                            melhor_cromossomo, len(populacao), fitness
+                        )
+
+                        # Adição de variações especializadas
+                        if regra_pendente:
+                            variacoes_especializadas = force_rule_specific_variations(
+                                melhor_cromossomo, regra_pendente, 200
+                            )
+                            populacao.extend(variacoes_especializadas)
+
+                        # Recálculo após diversificação
+                        valores_fitness = [
+                            fitness(cromossomo) for cromossomo in populacao
+                        ]
+                        melhor_fitness = max(valores_fitness)
+                        melhor_cromossomo = populacao[
+                            valores_fitness.index(melhor_fitness)
+                        ]
+
+                        # Reset de contadores após intervenção
+                        if regra_pendente == 5:
+                            self.geracoes_no_fitness_14 = 0
+                            self.geracoes_sem_melhoria = 0
+
+                        print(
+                            f"   ✅ Diversificação concluída: Nova aptidão máxima = {melhor_fitness}/15"
+                        )
+
+                # Debug ultra-detalhado para casos extremos
+                if melhor_fitness == 14 and self.geracoes_no_fitness_14 > 0:
+                    if self.geracoes_no_fitness_14 % 100 == 0:
+                        print(
+                            f"\n🔬 ANÁLISE CIENTÍFICA APROFUNDADA - Estagnação de {self.geracoes_no_fitness_14} gerações"
+                        )
+                        ultra_debug_mutation_failure(
+                            melhor_cromossomo, fitness, regra_pendente, 500
+                        )
+
+            # === OPERAÇÕES GENÉTICAS AVANÇADAS ===
+
+            # Estratégia de diversificação populacional geral
+            if self.geracoes_sem_melhoria > 1000:
+                if melhor_fitness >= 14:
+                    # Para alta aptidão: diversificação conservadora
+                    elite_preservada = int(len(populacao) * 0.15)  # 15% elite
+                    print(
+                        f"   {geracao:7d} | {melhor_fitness:2d}/15   | {len(populacao):6d} | {percentual_diversidade:3.0f}% | {tempo_decorrido:6.1f}s | Diversificação conservadora (preserva 15% elite)"
+                    )
+                else:
+                    # Para baixa aptidão: diversificação agressiva
+                    elite_preservada = int(len(populacao) * 0.08)  # 8% elite
+                    print(
+                        f"   {geracao:7d} | {melhor_fitness:2d}/15   | {len(populacao):6d} | {percentual_diversidade:3.0f}% | {tempo_decorrido:6.1f}s | Diversificação agressiva (preserva 8% elite)"
+                    )
+
+                populacao = populacao[
+                    :elite_preservada
+                ] + self.criar_populacao_especializada(
+                    len(populacao) - elite_preservada
+                )
+                self.geracoes_sem_melhoria = 0
                 continue
 
-            # 4. OPERAÇÕES GENÉTICAS AVANÇADAS
+            # === PROCESSO DE SELEÇÃO E REPRODUÇÃO ===
 
-            # Elite (sobrevivência)
-            num_survivors = int(len(POP) * SURVIVAL_RATE)
-            survivors = POP[:num_survivors]
+            # Seleção da elite para sobrevivência (10%)
+            taxa_sobrevivencia = 0.10
+            numero_sobreviventes = int(len(populacao) * taxa_sobrevivencia)
+            elite_sobrevivente = populacao[:numero_sobreviventes]
 
-            # ESTRATÉGIA ESPECIAL PARA QUALQUER REGRA NO 14/15
-            if best_fitness == 14:
-                missing_rule_num = (
-                    get_missing_rules(best_chrom)[0]
-                    if get_missing_rules(best_chrom)
-                    else None
-                )
-
-                if missing_rule_num:
-                    # Log detalhado a cada 20 gerações
-                    if generation % 20 == 0:
-                        print(f"\n🎯 FOCO NA REGRA {missing_rule_num}:")
-                        rule_debug = debug_specific_rule(best_chrom, missing_rule_num)
-                        print(f"   📋 {rule_debug['description']}")
-                        print(f"   🔍 {rule_debug['detailed_analysis']}")
-                        print_chromosome_visual(best_chrom)
-
-                    # DEBUG SUPER DETALHADO - POPULAÇÃO E DIVERSIDADE
-                    if generation % 50 == 0:  # A cada 50 gerações em vez de 25
-                        print(f"\n🔬 DEBUG SUPER DETALHADO - GERAÇÃO {generation}")
-                        print(f"   📊 População: {len(POP)} indivíduos")
-                        print(
-                            f"   🎯 Diversidade: {diversity}/{len(POP)} = {diversity_percent:.1f}%"
-                        )
-                        print(
-                            f"   🏆 Fitness 14: {sum(1 for f in fitness_values if f == 14)} indivíduos"
-                        )
-                        print(
-                            f"   📈 Fitness 13: {sum(1 for f in fitness_values if f == 13)} indivíduos"
-                        )
-                        print(
-                            f"   📉 Fitness <13: {sum(1 for f in fitness_values if f < 13)} indivíduos"
-                        )
-
-                        # Analisa se existem diferentes configurações ou todas são iguais
-                        solutions_14 = [chrom for chrom in POP if fitness(chrom) == 14]
-                        if solutions_14:
-                            # Análise das regras faltantes
-                            missing_rules = {}
-                            for chrom in solutions_14[:100]:  # Pega 100 amostras
-                                missing = get_missing_rules(chrom)
-                                if missing:
-                                    rule_num = missing[0]
-                                    missing_rules[rule_num] = (
-                                        missing_rules.get(rule_num, 0) + 1
-                                    )
-
-                            unique_configs = set(
-                                str(chrom) for chrom in solutions_14[:100]
-                            )
-                            print(
-                                f"   🧬 Configurações únicas (14/15): {len(unique_configs)}"
-                            )
-                            print(f"   🎲 Regras faltantes: {missing_rules}")
-
-                            if len(unique_configs) < 10:
-                                print(
-                                    f"   ⚠️  PROBLEMA: Muito pouca diversidade nas soluções 14/15!"
-                                )
-                                print(
-                                    f"   🔄 População convergiu para poucas configurações similares"
-                                )
-
-                                # ANÁLISE CRÍTICA: Por que não consegue sair da configuração atual?
-                                print(f"\n🚨 ANÁLISE CRÍTICA - CONFIGURAÇÃO TRAVADA:")
-                                best_14 = max(solutions_14, key=fitness)
-                                print_chromosome_visual(best_14)
-
-                                # Testa FORÇA BRUTA: o que acontece se quebrarmos TODAS as outras regras?
-                                print(f"🔬 TESTE FORÇA BRUTA - QUEBRAR OUTRAS REGRAS:")
-                                test_candidate = [list(casa) for casa in best_14]
-
-                                # FORÇA Verde-Branca sequencial nas 4 posições possíveis
-                                for verde_pos, branca_pos in [
-                                    (0, 1),
-                                    (1, 2),
-                                    (2, 3),
-                                    (3, 4),
-                                ]:
-                                    # Cria teste focado
-                                    test_copy = [list(casa) for casa in test_candidate]
-
-                                    # FORÇA cores nas posições
-                                    cores_originais = [casa[0] for casa in test_copy]
-                                    test_copy[verde_pos][0] = "Verde"
-                                    test_copy[branca_pos][0] = "Branca"
-
-                                    # Redistribui outras cores
-                                    outras_cores = [
-                                        c
-                                        for c in ["Amarela", "Azul", "Vermelha"]
-                                        if (verde_pos != 0 or c != "Verde")
-                                        and (branca_pos != 4 or c != "Branca")
-                                    ]
-                                    outras_posicoes = [
-                                        i
-                                        for i in range(5)
-                                        if i != verde_pos and i != branca_pos
-                                    ]
-
-                                    for i, pos in enumerate(
-                                        outras_posicoes[: len(outras_cores)]
-                                    ):
-                                        if i < len(outras_cores):
-                                            test_copy[pos][0] = outras_cores[i]
-
-                                    test_fitness = fitness(
-                                        [tuple(casa) for casa in test_copy]
-                                    )
-                                    print(
-                                        f"      Verde:{verde_pos+1}->Branca:{branca_pos+1} = Fitness {test_fitness}/15"
-                                    )
-
-                                    if test_fitness == 15:
-                                        print(
-                                            f"   🎉 SOLUÇÃO ENCONTRADA! Aplicando configuração..."
-                                        )
-                                        return [tuple(casa) for casa in test_copy]
-
-                        # Executa análise de estagnação se necessário
-                        is_stagnated = analyze_population_stagnation(POP[:100], fitness)
-
-                        if is_stagnated:
-                            print(f"   🚨 POPULAÇÃO ESTAGNADA DETECTADA!")
-                            print(f"   💥 Ativando EXPLOSÃO DE DIVERSIDADE")
-                            print(f"   📊 População atual: {len(POP)} indivíduos")
-                            print(
-                                f"   🎯 Fitness preso: {best_fitness}/15 (Regra {missing_rule_num})"
-                            )
-
-                            # FORÇA EXPLOSÃO DE DIVERSIDADE
-                            print(f"\n🔥 FASE 1: EXPLOSÃO GERAL")
-                            POP = diversity_explosion(best_chrom, len(POP), fitness)
-
-                            # FORÇA VARIAÇÕES ESPECÍFICAS DA REGRA PROBLEMÁTICA
-                            print(f"\n🔥 FASE 2: VARIAÇÕES ESPECÍFICAS")
-                            specific_variations = force_rule_specific_variations(
-                                best_chrom, missing_rule_num, 200
-                            )
-                            POP.extend(specific_variations)
-
-                            print(f"\n🔥 FASE 3: RECOMPUTAÇÃO")
-                            print(
-                                f"   🧮 Calculando fitness para {len(POP)} indivíduos..."
-                            )
-
-                            # Recomputa fitness para nova população
-                            fitness_values = [fitness(chrom) for chrom in POP]
-                            best_fitness = max(fitness_values)
-                            best_chrom = POP[fitness_values.index(best_fitness)]
-
-                            # Nova análise
-                            new_dist = {}
-                            for f in fitness_values:
-                                new_dist[f] = new_dist.get(f, 0) + 1
-
-                            print(f"   📊 Nova distribuição:")
-                            for f in sorted(new_dist.keys(), reverse=True):
-                                if f >= 13:
-                                    count = new_dist[f]
-                                    percentage = (count / len(POP)) * 100
-                                    print(
-                                        f"      {f:2d}/15: {count:4d} ({percentage:4.1f}%)"
-                                    )
-
-                            print(f"   🏆 Novo melhor fitness: {best_fitness}/15")
-
-                            # Reset contadores se houve explosão
-                            if missing_rule_num:
-                                if missing_rule_num == 5:
-                                    self.generations_at_14 = 0
-                                    self.generations_without_improvement = 0
-                                    print(f"   🔄 Contadores resetados")
-
-                            print(f"   ✅ Explosão concluída! Continuando evolução...")
-
-                    # DEBUG DE MUTAÇÃO E CROSSOVER
-                    if generation % 30 == 0:
-                        print(f"\n🧬 DEBUG OPERAÇÕES GENÉTICAS:")
-                        print(
-                            f"   🎲 Taxa de mutação atual: {self.mutation_rate*100:.1f}%"
-                        )
-                        print(
-                            f"   💞 Taxa de crossover: {self.crossover_rate*100:.1f}%"
-                        )
-                        print(f"   👥 Tamanho da população: {len(POP)}")
-                        print(
-                            f"   🏆 Elite sobrevivente: {int(len(POP) * SURVIVAL_RATE)}"
-                        )
-                        print(f"   🆕 Imigrantes: {int(len(POP) * IMMIGRATION_RATE)}")
-
-                        # Teste de efetividade das operações
-                        test_chrom = best_chrom
-                        original_fitness = fitness(test_chrom)
-
-                        # Testa mutação
-                        mutated = smart_mutate(
-                            test_chrom, self.mutation_rate, original_fitness
-                        )
-                        mutated_fitness = fitness(mutated)
-
-                        # Testa mutação dirigida
-                        directed = directed_mutate(test_chrom, [missing_rule_num])
-                        directed_fitness = fitness(directed)
-
-                        print(
-                            f"   🧪 Teste mutação: {original_fitness} → {mutated_fitness}"
-                        )
-                        print(
-                            f"   🎯 Teste dirigida: {original_fitness} → {directed_fitness}"
-                        )
-
-                        if (
-                            mutated_fitness == original_fitness
-                            and directed_fitness == original_fitness
-                        ):
-                            print(
-                                f"   ⚠️  PROBLEMA: Mutações não estão alterando fitness!"
-                            )
-
-                    # Estratégias escalantes baseadas no tempo preso
-                    if self.generations_at_14 > 100:  # Muito preso
-                        # FORÇA BRUTA TOTAL - tenta todas as combinações da regra faltante
-                        print(
-                            f"   {generation:7d} | {best_fitness:2d}/15   | {len(POP):6d} | {diversity_percent:3.0f}% | {elapsed:6.1f}s | 💥 FORÇA BRUTA TOTAL R{missing_rule_num}"
-                        )
-
-                        # Substitui parte da população com versões especializadas
-                        specialized_pop = []
-                        for _ in range(50):
-                            candidate = best_chrom
-                            # Faz 20 mutações focadas
-                            for _ in range(20):
-                                candidate = smart_mutate(candidate, 0.8, 14)
-                            specialized_pop.append(candidate)
-
-                        survivors[: len(specialized_pop)] = specialized_pop
-
-                    elif self.generations_at_14 > 50:  # Preso moderadamente
-                        # Reparo intensivo + mutação dirigida
-                        print(
-                            f"   {generation:7d} | {best_fitness:2d}/15   | {len(POP):6d} | {diversity_percent:3.0f}% | {elapsed:6.1f}s | 🔧 REPARO INTENSIVO R{missing_rule_num}"
-                        )
-
-                        repaired_pop = []
-                        for chrom in POP[:30]:
-                            if fitness(chrom) == 14:
-                                best_repair = chrom
-                                best_fit = 14
-
-                                # 30 tentativas de reparo
-                                for _ in range(30):
-                                    candidate = smart_mutate(chrom, 0.6, 14)
-                                    candidate = directed_mutate(
-                                        candidate, [missing_rule_num]
-                                    )
-                                    cand_fit = fitness(candidate)
-
-                                    if cand_fit > best_fit:
-                                        best_repair = candidate
-                                        best_fit = cand_fit
-
-                                    if best_fit == 15:
-                                        break
-
-                                repaired_pop.append(best_repair)
-
-                        if repaired_pop:
-                            survivors[: len(repaired_pop)] = repaired_pop
-
-                    elif self.generations_at_14 > 20:  # Início do problema
-                        print(
-                            f"   {generation:7d} | {best_fitness:2d}/15   | {len(POP):6d} | {diversity_percent:3.0f}% | {elapsed:6.1f}s | 🎯 FOCO DIRIGIDO R{missing_rule_num}"
-                        )
-
-            # Aplicar busca local na elite de alto fitness
-            if best_fitness >= 13:
-                elite_for_local = POP[: min(5, len(POP))]
-                improved_elite = []
-                for chrom in elite_for_local:
-                    if fitness(chrom) >= 13:
-                        improved = local_search(chrom, fitness, 15)
-                        improved_elite.append(improved)
+            # Aplicação de busca local na elite de alta aptidão
+            if melhor_fitness >= 13:
+                elite_para_refinamento = populacao[: min(5, len(populacao))]
+                elite_refinada = []
+                for cromossomo in elite_para_refinamento:
+                    if fitness(cromossomo) >= 13:
+                        cromossomo_melhorado = local_search(cromossomo, fitness, 15)
+                        elite_refinada.append(cromossomo_melhorado)
                     else:
-                        improved_elite.append(chrom)
-                survivors[: len(improved_elite)] = improved_elite
+                        elite_refinada.append(cromossomo)
+                elite_sobrevivente[: len(elite_refinada)] = elite_refinada
 
-            # Reprodução com múltiplas estratégias
-            offspring = []
-            target_offspring = (
-                len(POP) - num_survivors - int(len(POP) * IMMIGRATION_RATE)
+            # Geração de descendentes via reprodução
+            descendentes = []
+            taxa_imigracao = 0.15
+            numero_descendentes = (
+                len(populacao)
+                - numero_sobreviventes
+                - int(len(populacao) * taxa_imigracao)
             )
 
-            # Offspring de elite (20%)
-            if best_fitness >= 13:
-                elite_offspring_count = int(target_offspring * 0.2)
-                elite_offspring = create_elite_offspring(
-                    POP[:20], fitness_values[:20], fitness
-                )[:elite_offspring_count]
-                offspring.extend(elite_offspring)
+            # Descendentes de elite (estratégia especializada para alta aptidão)
+            if melhor_fitness >= 13:
+                descendentes_elite_count = int(numero_descendentes * 0.2)
+                descendentes_elite = create_elite_offspring(
+                    populacao[:20], valores_fitness[:20], fitness
+                )[:descendentes_elite_count]
+                descendentes.extend(descendentes_elite)
 
-            # Offspring normal
-            while len(offspring) < target_offspring:
-                # Seleção adaptativa
-                if best_fitness >= 14:
-                    # Torneio pequeno e agressivo
-                    p1 = tournament_selection(POP[:10], fitness_values[:10], 3)
-                    p2 = tournament_selection(POP[:10], fitness_values[:10], 3)
-                elif best_fitness >= 13:
-                    # Torneio moderado
-                    p1 = tournament_selection(POP[:50], fitness_values[:50], 5)
-                    p2 = tournament_selection(POP[:50], fitness_values[:50], 5)
+            # Reprodução principal via seleção e crossover
+            while len(descendentes) < numero_descendentes:
+                # Seleção adaptativa de pais
+                if melhor_fitness >= 14:
+                    # Seleção por torneio restrita (busca local intensiva)
+                    pai1 = tournament_selection(populacao[:10], valores_fitness[:10], 3)
+                    pai2 = tournament_selection(populacao[:10], valores_fitness[:10], 3)
+                elif melhor_fitness >= 13:
+                    # Seleção por torneio moderada
+                    pai1 = tournament_selection(populacao[:50], valores_fitness[:50], 5)
+                    pai2 = tournament_selection(populacao[:50], valores_fitness[:50], 5)
                 else:
-                    # Seleção híbrida normal
-                    p1 = hybrid_selection(POP[:200], fitness_values[:200])
-                    p2 = hybrid_selection(POP[:200], fitness_values[:200])
+                    # Seleção híbrida (exploração ampla)
+                    pai1 = hybrid_selection(populacao[:200], valores_fitness[:200])
+                    pai2 = hybrid_selection(populacao[:200], valores_fitness[:200])
 
-                # Crossover avançado
-                if best_fitness >= 13:
-                    c1, c2 = advanced_crossover(p1, p2, self.crossover_rate)
+                # Aplicação do operador de crossover
+                if melhor_fitness >= 13:
+                    filho1, filho2 = advanced_crossover(pai1, pai2, self.taxa_crossover)
                 else:
-                    c1, c2 = crossover(p1, p2, self.crossover_rate)
+                    filho1, filho2 = crossover(pai1, pai2, self.taxa_crossover)
 
-                # Mutação inteligente
-                missing_rules_1 = get_missing_rules(c1)
-                missing_rules_2 = get_missing_rules(c2)
+                # Aplicação do operador de mutação inteligente
+                regras_faltantes_f1 = get_missing_rules(filho1)
+                regras_faltantes_f2 = get_missing_rules(filho2)
 
-                c1 = smart_mutate(c1, self.mutation_rate, fitness(c1))
-                c2 = smart_mutate(c2, self.mutation_rate, fitness(c2))
+                filho1 = smart_mutate(filho1, self.taxa_mutacao, fitness(filho1))
+                filho2 = smart_mutate(filho2, self.taxa_mutacao, fitness(filho2))
 
-                # Mutação dirigida para alta fitness
-                if best_fitness >= 12:
-                    c1 = directed_mutate(c1, missing_rules_1)
-                    c2 = directed_mutate(c2, missing_rules_2)
+                # Mutação dirigida para cromossomos de alta aptidão
+                if melhor_fitness >= 12:
+                    filho1 = directed_mutate(filho1, regras_faltantes_f1)
+                    filho2 = directed_mutate(filho2, regras_faltantes_f2)
 
-                offspring.extend([c1, c2])
+                descendentes.extend([filho1, filho2])
 
-            # Imigração especializada
-            num_immigrants = int(len(POP) * IMMIGRATION_RATE)
-            immigrants = self.create_specialized_population(num_immigrants)
+            # Processo de imigração (introdução de novos indivíduos)
+            numero_imigrantes = int(len(populacao) * taxa_imigracao)
+            imigrantes = self.criar_populacao_especializada(numero_imigrantes)
 
-            # Nova geração
-            POP = survivors + offspring[:target_offspring] + immigrants
+            # Formação da nova geração
+            populacao = (
+                elite_sobrevivente + descendentes[:numero_descendentes] + imigrantes
+            )
 
-            # Manter tamanho da população controlado
-            if len(POP) > self.population_size:
-                POP = POP[: self.population_size]
+            # Controle do tamanho populacional
+            if len(populacao) > self.tamanho_populacao:
+                populacao = populacao[: self.tamanho_populacao]
 
-        # APRESENTAÇÃO FINAL DA SOLUÇÃO
+        # === APRESENTAÇÃO DOS RESULTADOS FINAIS ===
+        self._apresentar_resultados_finais(
+            melhor_cromossomo_global,
+            melhor_fitness_global,
+            geracao,
+            tempo_inicio,
+            tempo_atingiu_14,
+        )
+
+        return melhor_cromossomo_global, melhor_fitness_global
+
+    def _apresentar_resultados_finais(
+        self,
+        melhor_cromossomo,
+        melhor_fitness,
+        geracoes_executadas,
+        tempo_inicio,
+        tempo_14,
+    ):
+        """Apresenta os resultados finais de forma acadêmica e estruturada."""
+        print("\n" + "=" * 80)
+        print("                    RELATÓRIO FINAL DE RESULTADOS")
         print("=" * 80)
-        print("                      SOLUÇÃO FINAL DETALHADA")
-        print("=" * 80)
 
-        show_solution(best_ever_chromosome)
+        show_solution(melhor_cromossomo)
 
-        # Análise detalhada
-        report = detailed_fitness_report(best_ever_chromosome)
-        partial_scores = partial_fitness_scores(best_ever_chromosome)
+        # Análise científica detalhada
+        relatorio_detalhado = detailed_fitness_report(melhor_cromossomo)
+        pontuacoes_parciais = partial_fitness_scores(melhor_cromossomo)
 
-        print(f"\n📊 ANÁLISE DETALHADA:")
-        print(f"   ✅ Regras satisfeitas: {report['satisfied']}")
-        if report["missing"]:
-            print(f"   ❌ Regras faltantes: {report['missing']}")
-        print(f"   📈 Pontuação por categoria:")
-        for category, score in partial_scores.items():
-            print(f"      {category.capitalize()}: {score}")
+        print(f"\n📊 ANÁLISE CIENTÍFICA DOS RESULTADOS:")
+        print(
+            f"   ✅ Regras de satisfação cumpridas: {relatorio_detalhado['satisfied']}"
+        )
+        if relatorio_detalhado["missing"]:
+            print(
+                f"   ❌ Regras pendentes de satisfação: {relatorio_detalhado['missing']}"
+            )
+        print(f"   📈 Análise por categorias de restrições:")
+        for categoria, pontuacao in pontuacoes_parciais.items():
+            print(f"      • {categoria.capitalize()}: {pontuacao}")
 
-        # Resposta do desafio
-        for idx, casa in enumerate(best_ever_chromosome, 1):
+        # Identificação da resposta do desafio
+        print(f"\n🎯 RESPOSTA AO DESAFIO LÓGICO DE EINSTEIN:")
+        for posicao, casa in enumerate(melhor_cromossomo, 1):
             if casa[4] == "Peixes":
-                print(
-                    f"\n🐟 RESPOSTA DO DESAFIO: O {casa[1]} tem os Peixes! (Casa {idx})"
-                )
+                print(f"   🐟 Conclusão: O {casa[1]} possui os Peixes (Casa {posicao})")
                 break
 
-        # Estatísticas finais
-        final_time = time.time() - start_time
-        print(f"\n📊 ESTATÍSTICAS FINAIS:")
-        print(f"   🎯 Fitness final: {best_ever_fitness}/15")
-        print(f"   🧬 Total de gerações: {generation:,}")
-        print(f"   ⏱️  Tempo total: {final_time:.1f} segundos")
-        print(f"   👥 População final: {len(POP):,} indivíduos")
-        if time_at_14:
-            print(f"   🚀 Tempo para chegar em 14/15: {time_at_14:.1f}s")
-            print(f"   ⚡ Tempo de 14→15: {final_time - time_at_14:.1f}s")
-        print(f"   📈 Taxa de diversidade final: {diversity_percent:.1f}%")
+        # Métricas de performance computacional
+        tempo_total = time.time() - tempo_inicio
+        print(f"\n📊 MÉTRICAS DE PERFORMANCE COMPUTACIONAL:")
+        print(f"   🎯 Aptidão final alcançada: {melhor_fitness}/15")
+        print(f"   🔄 Total de gerações evolutivas: {geracoes_executadas:,}")
+        print(f"   ⏱️ Tempo computacional total: {tempo_total:.2f} segundos")
+        print(f"   📈 Eficiência por geração: {tempo_total/geracoes_executadas:.4f}s")
+        print(
+            f"   🧬 Tamanho final da população: {self.tamanho_populacao:,} indivíduos"
+        )
 
-        print(f"\n✅ ALGORITMO GENÉTICO OTIMIZADO CONCLUÍDO!")
+        if tempo_14:
+            print(f"   🚀 Tempo para atingir 14/15: {tempo_14:.2f}s")
+            if melhor_fitness == 15:
+                print(
+                    f"   ⚡ Tempo para otimização final (14→15): {tempo_total - tempo_14:.2f}s"
+                )
 
-        return best_ever_chromosome, best_ever_fitness
+        # Conclusões acadêmicas
+        print(f"\n📚 CONCLUSÕES ACADÊMICAS:")
+        if melhor_fitness == 15:
+            print(f"   ✅ Sucesso completo: Problema de CSP resolvido optimalmente")
+            print(
+                f"   🧬 Metodologia eficaz: Algoritmo Genético demonstrou convergência"
+            )
+            print(
+                f"   📈 Estratégias bem-sucedidas: Adaptação paramétrica e busca local"
+            )
+        elif melhor_fitness == 14:
+            print(f"   📊 Resultado quase-ótimo: 93.3% das restrições satisfeitas")
+            print(f"   🔬 Análise: Possível ótimo local na última restrição")
+            print(f"   💡 Sugestão: Estratégias de escape mais agressivas necessárias")
+        else:
+            print(
+                f"   📊 Resultado parcial: {(melhor_fitness/15)*100:.1f}% das restrições satisfeitas"
+            )
+            print(f"   🔬 Análise: Necessário maior tempo ou parâmetros ajustados")
+
+        print(f"\n✅ EXPERIMENTO COMPUTACIONAL CONCLUÍDO")
+        print("=" * 80)
 
 
 def main():
-    """Função principal"""
-    ga = AdvancedGeneticAlgorithm()
-    solution, fitness_score = ga.run()
+    """Função principal para execução do algoritmo genético."""
+    print("🎓 DISCIPLINA: Inteligência Artificial")
+    print("👨‍🏫 PROFESSOR: Tiago Bonini Borchartt")
+    print("📝 TRABALHO: Resolução do Desafio de Einstein via Algoritmos Genéticos")
+    print("-" * 80)
 
-    if fitness_score == 15:
-        print("\n🎊 PARABÉNS! Solução perfeita encontrada!")
+    algoritmo_genetico = AlgoritmoGeneticoAvancado()
+    solucao_final, aptidao_final = algoritmo_genetico.executar()
+
+    print(f"\n🎯 RESULTADO FINAL:")
+    if aptidao_final == 15:
+        print(f"   🎉 EXCELENTE: Solução ótima encontrada!")
+        print(f"   📋 Todas as 15 restrições foram satisfeitas com sucesso")
+    elif aptidao_final == 14:
+        print(f"   👍 MUITO BOM: Solução quase-ótima encontrada!")
+        print(f"   📋 14 de 15 restrições satisfeitas (93.3% de sucesso)")
     else:
-        print(f"\n⚠️ Melhor solução encontrada: {fitness_score}/15")
+        print(f"   📊 RESULTADO: Solução parcial com aptidão {aptidao_final}/15")
+        print(
+            f"   📋 {aptidao_final} restrições satisfeitas ({(aptidao_final/15)*100:.1f}% de sucesso)"
+        )
 
 
 if __name__ == "__main__":
